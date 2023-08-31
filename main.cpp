@@ -222,7 +222,17 @@ void upward_update(int l, map<int, set<Key>> &tree)
 }
 int downward_update(map<int, set<Key>> &tree)
 {
-
+    // return #updated keys and alter updated keys -> valid keys
+    int total_updated_keys = 0;
+    for(auto i: tree) {
+        for(auto key: i.second) {
+            if(key.st == Status::updated) {
+                total_updated_keys ++;
+                update_key_status(tree, make_pair(key.begin, key.end), key.level, Status::valid);
+            }
+        }
+    }
+    return total_updated_keys;
 }
 void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
 {
@@ -255,6 +265,7 @@ int main()
     upward_update(3, tree);
 
     traverse_tree(tree);
+    cout << downward_update(tree) << endl;
 
     // int size_min = 0, size_max = bar_width;
     // int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
