@@ -12,7 +12,7 @@ int Maxlba;
 int KPP;    // Key Per Page
 
 // Data Structure
-enum Status {valid, invalid, updated};
+enum Status {valid, updated, invalid};
 class Key
 {
 public:
@@ -72,9 +72,9 @@ pair<int, int> cmd_gen(int size);  // given size, return valid data id by the ch
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
 pair<int, int> find_min_max(vector<int> row);   // given a row, return <min, max> value in a pair
 void mark_data(pair<int, int> data, map<int, set<Key>> &tree);
-void upward_update(int l, map<int, set<Key>> &tree, set<Key> &k);
-void downward_update(map<int, set<Key>> &tree);
-void update_element(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status);
+void upward_update(int l, map<int, set<Key>> &tree);
+int downward_update(map<int, set<Key>> &tree);     // downward remove updated tags and return #updated keys
+void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status);
 
 void construct_tree(map<int, set<Key>> &tree)
 {
@@ -166,11 +166,11 @@ void mark_data(pair<int, int> data, map<int, set<Key>> &tree)
     int MLI = L - 1;    // max level id
 
     for(int i = data.first; i <= data.second; i ++) {
-        update_element(tree, make_pair(i, i), MLI, Status::invalid);
+        update_key_status(tree, make_pair(i, i), MLI, Status::invalid);
     }
 }
 // consider levely update with sanitize algorithm
-void upward_update(int l, map<int, set<Key>> &tree, set<Key> &k)
+void upward_update(int l, map<int, set<Key>> &tree)
 {
     // recursively perform sanitize algorithm on level l
     if(l == 0) return;
@@ -181,47 +181,50 @@ void upward_update(int l, map<int, set<Key>> &tree, set<Key> &k)
     int size_parent = pow(KPP, MLI - (l - 1));
     int num_parent = (Maxlba + 1) / size_parent;  // Maxlba/size = #key per level
     int size = pow(KPP, MLI - l); 
-    
+    bool modification = false;
     for(int i = 0; i < num_parent; i ++) {
         // check on level l
         vector<int> record(3, 0);   // record number for subkeys status
-        int data_begin = i * size_parent;   // id of first subkey
-        int offset = size - 1;
+        // id of first subkey
+        pair<int, int> data = make_pair(i * size_parent, i * size_parent + (size - 1));
         for(int j = 0; j < KPP; j ++) {
             // check KPP keys
-            set<Key>::iterator it = tree[l].find(Key(data_begin, data_begin + offset, l));
+            set<Key>::iterator it = tree[l].find(Key(data.first, data.second, l));
             if(it == tree[l].end()) {
                 cout << "cant find in level " << l << endl;
                 break;
             }
             record[it->st] ++;
-            data_begin += size;
+            // data_begin += size;
+            pair<int, int> data_next = make_pair(data.first + size, data.first + size + (size - 1));
+            swap(data, data_next);
         }
         // if all N keys are invalid, mark parent as invalid
         // else N keys includes mixed status with valid key, mark parent as updated
         // (if no any updated, keep it as valid)
-        pair<int, int> data = make_pair(i * size_parent, i * size_parent + (size_parent - 1));
+        data = make_pair(i * size_parent, i * size_parent + (size_parent - 1));
         if(record[Status::invalid] == KPP) {
             // update parent as invalid
-            update_element(tree, data, l - 1, Status::invalid);
+            update_key_status(tree, data, l - 1, Status::invalid);
+            modification = true;
         }
         else if(record[Status::valid] == KPP) {
             // keep parent as valid
         }
         else {
             // mark as updated
-            update_element(tree, data, l - 1, Status::updated);
+            update_key_status(tree, data, l - 1, Status::updated);
+            modification = true;
         }
     }
-
+    if(modification) upward_update(l - 1, tree);
     return;
 }
-// downward remove updated tags
-void downward_update(map<int, set<Key>> &tree)
+int downward_update(map<int, set<Key>> &tree)
 {
 
 }
-void update_element(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
+void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
 {
     auto it = tree[l].find(Key(data.first, data.second, l));
     tree[l].erase(it);
@@ -249,7 +252,7 @@ int main()
     // traverse_tree(tree);
     
     mark_data(make_pair(1,10), tree);
-    upward_update(3, tree, collector);
+    upward_update(3, tree);
 
     traverse_tree(tree);
 
