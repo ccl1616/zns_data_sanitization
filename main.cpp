@@ -5,16 +5,24 @@
 #include <algorithm>    // swap()
 #include <vector>
 #include <string>
+#include <map>
 
 using namespace std;
 int Maxlba;
-int Kpp;   // Key Per Page
+int KPP;    // Key Per Page
 
 // Data Structure
+enum Status {valid, invalid, updated};
 class Key
 {
 public:
     int begin, end, level;  // lba begin & end that the key take care of
+    Status st;
+    Key(int x, int y, int l, Status s) :
+        begin(x),
+        end(y),
+        level(l),
+        st(s) {}
     Key(int x, int y, int l) :
         begin(x),
         end(y),
@@ -31,11 +39,12 @@ public:
     bool operator==(const Key& other) const {
         return begin == other.begin && end == other.end && level == other.level;
     }
+
 };
 // cout overload
 ostream& operator << (ostream &out, const Key &i)
 {
-    cout << "(" << i.begin << "," << i.end << ")" << "-" << i.level;
+    cout << "(" << i.begin << "," << i.end << ")" << "- " << i.level << "|" << i.st;
     return out;
 }
 // ======================================================================
@@ -56,37 +65,49 @@ ostream& operator << (ostream &out, const Record &i)
 
 // ======================================================================
 // Functions
-void tree_constructor(int maxlba, set<Key> &tree);  // given maxlba id, push keys into set tree
-void traverse(set<Key> x);  // traverse and print x
+void construct_tree(map<int, set<Key>> &tree);  // given maxlba id, push keys into set tree
+void traverse_tree(map<int, set<Key>> m);  // traverse and print x
 void key2root(int x, int y, int l, set<Key> &k);   // given Key(x,y), push all its upper keys(<= level2) into set k
 pair<int, int> cmd_gen(int size);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
 pair<int, int> find_min_max(vector<int> row);   // given a row, return <min, max> value in a pair
+void mark_data(pair<int, int> data, map<int, set<Key>> &tree);
+void upward_update(int l, map<int, set<Key>> &tree, set<Key> &k);
+void downward_update(map<int, set<Key>> &tree);
+void update_element(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status);
 
-void tree_constructor(int maxlba, set<Key> &tree)
+void construct_tree(map<int, set<Key>> &tree)
 {
-    int N = ceil(log2(Maxlba+1) / log2(Kpp)) + 1;   // total level num
+    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    int MLI = L - 1;    // max level id
     // build from level 1 to level N
-    for(int i = 1; i <= N; i ++) {
+    for(int i = 0; i < L; i ++) {
         // size: #lba this key covered
         // offset: offset for begin & end of one key
-        int size = (i == N) ?1 :(pow(Kpp, N - i));
+        int size = pow(KPP, MLI - i);
         int offset = size - 1;
-        for(int j = 0; j <= maxlba; j += size) {
-            tree.insert(Key(j, j+offset, i));
-        }
+        set<Key> tree_level;
+        for(int j = 0; j <= Maxlba; j += size)
+            tree_level.insert(Key(j, j+offset, i, Status::valid));
+        tree[i] = tree_level;
     }
 }
-void traverse(set<Key> x)
+void traverse_tree(map<int, set<Key>> tree)
 {
-    cout << "size: " << x.size() << endl;
-    int N = ceil(log2(Maxlba+1) / log2(Kpp)) + 1;   // total level num
-
-    for(auto i: x) {
-        if(i.level == N) break;
-        cout << i.begin << "," << i.end << " -" << i.level << endl;
+    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    // print tree, top-bottom
+    for(auto i: tree) {
+        cout << "level: " << i.first << endl;
+        // skip last level
+        // if(i.first == L - 1) {
+        //     cout << "skip\n";
+        //     break;
+        // }
+        // print leaves by level
+        for(auto j: i.second)
+            cout << j << endl;
+        cout << endl;
     }
-    cout << "---\n";
 }
 void key2root(int x, int y, int l, set<Key> &k)
 {
@@ -95,8 +116,8 @@ void key2root(int x, int y, int l, set<Key> &k)
         k.insert(Key(x, y, l));
         // buttom up recursive
         // calculate parent's key id
-        int N = ceil(log2(Maxlba+1) / log2(Kpp)) + 1;   // total level num
-        int p_size = pow(Kpp, N - (l - 1)), p_offset = p_size - 1;
+        int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+        int p_size = pow(KPP, N - (l - 1)), p_offset = p_size - 1;
         int p_x = x / p_size;
         key2root(p_x * p_size, p_x * p_size + p_offset, l - 1, k);
         return;
@@ -137,73 +158,142 @@ pair<int, int> find_min_max(vector<int> row)
     return make_pair(min, max);
 }
 
+
+// mark data as invalid
+void mark_data(pair<int, int> data, map<int, set<Key>> &tree)
+{
+    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    int MLI = L - 1;    // max level id
+
+    for(int i = data.first; i <= data.second; i ++) {
+        update_element(tree, make_pair(i, i), MLI, Status::invalid);
+    }
+}
+// consider levely update with sanitize algorithm
+void upward_update(int l, map<int, set<Key>> &tree, set<Key> &k)
+{
+    // recursively perform sanitize algorithm on level l
+    if(l == 0) return;
+
+// algorithm
+    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    int MLI = L - 1;    // max level id
+    int size_parent = pow(KPP, MLI - (l - 1));
+    int num_parent = (Maxlba + 1) / size_parent;  // Maxlba/size = #key per level
+    int size = pow(KPP, MLI - l); 
+    
+    for(int i = 0; i < num_parent; i ++) {
+        // check on level l
+        vector<int> record(3, 0);   // record number for subkeys status
+        int data_begin = i * size_parent;   // id of first subkey
+        int offset = size - 1;
+        for(int j = 0; j < KPP; j ++) {
+            // check KPP keys
+            set<Key>::iterator it = tree[l].find(Key(data_begin, data_begin + offset, l));
+            if(it == tree[l].end()) {
+                cout << "cant find in level " << l << endl;
+                break;
+            }
+            record[it->st] ++;
+            data_begin += size;
+        }
+        // if all N keys are invalid, mark parent as invalid
+        // else N keys includes mixed status with valid key, mark parent as updated
+        // (if no any updated, keep it as valid)
+        pair<int, int> data = make_pair(i * size_parent, i * size_parent + (size_parent - 1));
+        if(record[Status::invalid] == KPP) {
+            // update parent as invalid
+            update_element(tree, data, l - 1, Status::invalid);
+        }
+        else if(record[Status::valid] == KPP) {
+            // keep parent as valid
+        }
+        else {
+            // mark as updated
+            update_element(tree, data, l - 1, Status::updated);
+        }
+    }
+
+    return;
+}
+// downward remove updated tags
+void downward_update(map<int, set<Key>> &tree)
+{
+
+}
+void update_element(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
+{
+    auto it = tree[l].find(Key(data.first, data.second, l));
+    tree[l].erase(it);
+    tree[l].insert(Key(data.first, data.second, l, new_status));
+}
+
 // ======================================================================
 int main()
 {
-    // set<Key> tree;
-    // tree_constructor(Maxlba, tree);
-
-    // count keys
-    // int N = ceil(log2(Maxlba+1) / log2(Kpp)) + 1;   // total level num
-    // set<Key> collector;
-    // for(int i = data_lba_begin; i <= data_lba_end; i ++) {
-    //     key2root(i, i, N, collector);
-    // }
-    // collector.insert(Key(0, Maxlba, 1));    // insert root
-    // // traverse(collector);
-    // cout << "size: " << collector.size() << endl;
-
     // insert spec
-    int reps, bar_width, bar_num;
-    cout << "input Maxlba, Kpp, reps, bar_width, bar_num\n";
-    cin >> Maxlba >> Kpp >> reps >> bar_width >> bar_num;
+    // int reps, bar_width, bar_num;
+    // cout << "input Maxlba, KPP, reps, bar_width, bar_num\n";
+    // cin >> Maxlba >> KPP >> reps >> bar_width >> bar_num;
+    cin >> Maxlba >> KPP;
+
 
     if(Maxlba < 3) { 
         cout << "too small\n"; 
         return 0; 
     }
 
-    int size_min = 0, size_max = bar_width;
-    int N = ceil(log2(Maxlba+1) / log2(Kpp)) + 1;   // total level num
-
-    vector<vector<int>> chart;
-    for(int k = 0; k < bar_num; k ++) {
-        vector<Record> result;
-        vector<int> result_collector;
-        for(int i = 0; i < reps; i ++) {
-            // rand testcase
-            int rand_size = rand_gen(size_min, size_max);
-            pair<int, int> data = cmd_gen(rand_size);
-            // collect keys
-            set<Key> collector;
-            for(int i = data.first; i <= data.second; i ++) {
-                key2root(i, i, N, collector);
-            }
-            collector.insert(Key(0, Maxlba, 1));    // insert root
-            // record
-            result.push_back(Record(data.first, data.second, collector.size()));
-            result_collector.push_back(collector.size());
-            collector.clear();
-        }
-        size_min = size_max + 1;
-        size_max += bar_width;
-        chart.push_back(result_collector);
-        result.clear();
-    }
-    // draw chart
-    size_min = 0, size_max = bar_width;
-    for(auto row: chart) {
-        // cout << "[" << size_min << ", " << size_max << "]:  ";
-
-        double sum = accumulate(begin(row), end(row), 0.0);
-        double mean = sum/ row.size();
-        pair<int, int> min_max = find_min_max(row);
-
-        cout << mean << " " << min_max.first << " " << min_max.second << endl;
-
-        size_min = size_max + 1;
-        size_max += bar_width;
-    }
+    map<int, set<Key>> tree;
+    set<Key> collector;
+    construct_tree(tree);
+    // traverse_tree(tree);
     
+    mark_data(make_pair(1,10), tree);
+    upward_update(3, tree, collector);
+
+    traverse_tree(tree);
+
+    // int size_min = 0, size_max = bar_width;
+    // int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+
+    // vector<vector<int>> chart;
+    // for(int k = 0; k < bar_num; k ++) {
+    //     vector<Record> result;
+    //     vector<int> result_collector;
+    //     for(int i = 0; i < reps; i ++) {
+    //         // rand testcase
+    //         int rand_size = rand_gen(size_min, size_max);
+    //         pair<int, int> data = cmd_gen(rand_size);
+    //         // collect keys
+    //         set<Key> collector;
+    //         for(int i = data.first; i <= data.second; i ++) {
+    //             key2root(i, i, N, collector);
+    //         }
+    //         collector.insert(Key(0, Maxlba, 1));    // insert root
+    //         // record
+    //         result.push_back(Record(data.first, data.second, collector.size()));
+    //         result_collector.push_back(collector.size());
+    //         collector.clear();
+    //     }
+    //     size_min = size_max + 1;
+    //     size_max += bar_width;
+    //     chart.push_back(result_collector);
+    //     result.clear();
+    // }
+    // // draw chart
+    // size_min = 0, size_max = bar_width;
+    // for(auto row: chart) {
+    //     // cout << "[" << size_min << ", " << size_max << "]:  ";
+
+    //     double sum = accumulate(begin(row), end(row), 0.0);
+    //     double mean = sum/ row.size();
+    //     pair<int, int> min_max = find_min_max(row);
+
+    //     cout << mean << " " << min_max.first << " " << min_max.second << endl;
+
+    //     size_min = size_max + 1;
+    //     size_max += bar_width;
+    // }
+
     return 0;
 }
