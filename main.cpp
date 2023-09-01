@@ -136,7 +136,6 @@ pair<int, int> cmd_gen(int size)
     }
     cout << "rand_gen fail\n";
     return make_pair(0, 0);
-
 }
 int rand_gen(int min, int max)
 {
@@ -245,11 +244,10 @@ void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Sta
 int main()
 {
     // insert spec
-    int exp, data_begin, data_end;    // exponent, 2^exp
-    cout << "exp, KPP\n";
-    cin >> exp >> KPP;
-    cout << "data_begin, data_end\n";
-    cin >> data_begin >> data_end;
+    int exp, cmd_per_group;    // exponent of LBA num, LBA num = 2^exp
+    cout << "input exp, KPP, cmd_per_group\n";
+    cin >> exp >> KPP >> cmd_per_group;
+    
     Maxlba = pow(2, exp) - 1;
     if(Maxlba < 3) { 
         cout << "too small\n"; 
@@ -258,11 +256,49 @@ int main()
     int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
     int MLI = L - 1;    // max level id
 
-    map<int, set<Key>> tree;
-    construct_tree(tree);
-    mark_data(make_pair(data_begin, data_end), tree);
-    upward_update(MLI, tree);
-    cout << downward_update(tree) << endl;
+// desiginated data mode: data by one set of input
+    // {
+    //     int data_begin, data_end;
+    //     cout << "input data_begin, data_end\n";
+    //     cin >> data_begin >> data_end;
+    //     map<int, set<Key>> tree;
+    //     construct_tree(tree);
+    //     mark_data(make_pair(data_begin, data_end), tree);
+    //     upward_update(MLI, tree);
+    //     cout << downward_update(tree) << endl;
+    // }
+
+// chart mode: make chart automatically
+    // data size for each group: 2^i
+    cout << "size  |  mean , min , max\n";
+    for(int i = 0; i < exp; i ++) {
+        int size = pow(2, i);
+        map<int, int> record;   // (#updated keys, number of repitition)
+        int sum = 0;
+        // for this size, do several cmd
+        for(int j = 0; j < cmd_per_group; j ++) {
+            pair<int, int> data = cmd_gen(size);
+            // cout << size << " " << data.first << " " << data.second << endl;
+
+            map<int, set<Key>> tree;
+            construct_tree(tree);
+            mark_data(make_pair(data.first, data.second), tree);
+            upward_update(MLI, tree);
+
+            int key_num = downward_update(tree);
+            record[key_num] ++;
+            sum += key_num;
+        }
+        // calculate min, mean, max
+        auto it_min = record.begin();
+        int min = it_min->first;
+        auto it_max = record.rbegin();
+        int max = it_max->first;
+        int mean = sum / cmd_per_group;
+
+        cout << "2^" << i << " | " << mean << " , " << min << " , " << max << endl;
+    }
+
 
     return 0;
 }
