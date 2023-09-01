@@ -245,69 +245,24 @@ void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Sta
 int main()
 {
     // insert spec
-    // int reps, bar_width, bar_num;
-    // cout << "input Maxlba, KPP, reps, bar_width, bar_num\n";
-    // cin >> Maxlba >> KPP >> reps >> bar_width >> bar_num;
-    cin >> Maxlba >> KPP;
-
-
+    int exp, data_begin, data_end;    // exponent, 2^exp
+    cout << "exp, KPP\n";
+    cin >> exp >> KPP;
+    cout << "data_begin, data_end\n";
+    cin >> data_begin >> data_end;
+    Maxlba = pow(2, exp) - 1;
     if(Maxlba < 3) { 
         cout << "too small\n"; 
         return 0; 
     }
+    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    int MLI = L - 1;    // max level id
 
     map<int, set<Key>> tree;
-    set<Key> collector;
     construct_tree(tree);
-    // traverse_tree(tree);
-    
-    mark_data(make_pair(1,10), tree);
-    upward_update(3, tree);
-
-    traverse_tree(tree);
+    mark_data(make_pair(data_begin, data_end), tree);
+    upward_update(MLI, tree);
     cout << downward_update(tree) << endl;
-
-    // int size_min = 0, size_max = bar_width;
-    // int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
-
-    // vector<vector<int>> chart;
-    // for(int k = 0; k < bar_num; k ++) {
-    //     vector<Record> result;
-    //     vector<int> result_collector;
-    //     for(int i = 0; i < reps; i ++) {
-    //         // rand testcase
-    //         int rand_size = rand_gen(size_min, size_max);
-    //         pair<int, int> data = cmd_gen(rand_size);
-    //         // collect keys
-    //         set<Key> collector;
-    //         for(int i = data.first; i <= data.second; i ++) {
-    //             key2root(i, i, N, collector);
-    //         }
-    //         collector.insert(Key(0, Maxlba, 1));    // insert root
-    //         // record
-    //         result.push_back(Record(data.first, data.second, collector.size()));
-    //         result_collector.push_back(collector.size());
-    //         collector.clear();
-    //     }
-    //     size_min = size_max + 1;
-    //     size_max += bar_width;
-    //     chart.push_back(result_collector);
-    //     result.clear();
-    // }
-    // // draw chart
-    // size_min = 0, size_max = bar_width;
-    // for(auto row: chart) {
-    //     // cout << "[" << size_min << ", " << size_max << "]:  ";
-
-    //     double sum = accumulate(begin(row), end(row), 0.0);
-    //     double mean = sum/ row.size();
-    //     pair<int, int> min_max = find_min_max(row);
-
-    //     cout << mean << " " << min_max.first << " " << min_max.second << endl;
-
-    //     size_min = size_max + 1;
-    //     size_max += bar_width;
-    // }
 
     return 0;
 }
