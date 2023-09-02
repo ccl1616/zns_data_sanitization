@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <fstream>
 
 using namespace std;
 int Maxlba;
@@ -243,6 +244,10 @@ void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Sta
 // ======================================================================
 int main()
 {
+    // redirect output
+    ofstream ofs;
+    ofs.open("output.txt");
+
     // insert spec
     int exp, cmd_per_group;    // exponent of LBA num, LBA num = 2^exp
     cout << "input exp, KPP, cmd_per_group\n";
@@ -270,7 +275,7 @@ int main()
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
-    cout << "size  |  mean , min , max\n";
+    ofs << "size  |  mean , min , max\n";
     for(int i = 0; i < exp; i ++) {
         int size = pow(2, i);
         map<int, int> record;   // (#updated keys, number of repitition)
@@ -296,9 +301,10 @@ int main()
         int max = it_max->first;
         int mean = sum / cmd_per_group;
 
-        cout << "2^" << i << " | " << mean << " , " << min << " , " << max << endl;
+        ofs << "2^" << i << " | " << mean << " , " << min << " , " << max << endl;
     }
 
-
+    // close output file
+    ofs.close();
     return 0;
 }
