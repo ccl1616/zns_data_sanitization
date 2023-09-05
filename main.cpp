@@ -275,11 +275,11 @@ int main()
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
-    ofs << "size  |  mean , min , max\n";
+    ofs << "size mean min max\n";
     for(int i = 0; i < exp; i ++) {
         int size = pow(2, i);
         map<int, int> record;   // (#updated keys, number of repitition)
-        int sum = 0;
+        float sum = 0;
         // for this size, do several cmd
         for(int j = 0; j < cmd_per_group; j ++) {
             pair<int, int> data = cmd_gen(size);
@@ -299,9 +299,14 @@ int main()
         int min = it_min->first;
         auto it_max = record.rbegin();
         int max = it_max->first;
-        int mean = sum / cmd_per_group;
+        float mean = sum / cmd_per_group;
 
-        ofs << "2^" << i << " | " << mean << " , " << min << " , " << max << endl;
+        ofs << "2^" << i << " " << mean << " " << min << " " << max << " | ";
+        for(auto j: record) {
+            for(int k = 0; k < j.second; k ++)
+                ofs << j.first << " ";
+        }
+        ofs << endl;
     }
 
     // close output file
