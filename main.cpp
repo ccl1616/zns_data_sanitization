@@ -18,7 +18,14 @@ class Key
 {
 public:
     int begin, end, level;  // lba begin & end that the key take care of
+    int page_id;
     Status st;
+    Key(int x, int y, int l, Status s, int pid) :
+        begin(x),
+        end(y),
+        level(l),
+        st(s),
+        page_id(pid) {}
     Key(int x, int y, int l, Status s) :
         begin(x),
         end(y),
@@ -40,35 +47,19 @@ public:
     bool operator==(const Key& other) const {
         return begin == other.begin && end == other.end && level == other.level;
     }
-
 };
 // cout overload
 ostream& operator << (ostream &out, const Key &i)
 {
-    cout << "(" << i.begin << "," << i.end << ")" << "- " << i.level << "|" << i.st;
+    cout << "(" << i.begin << "," << i.end << ")" << "- " << i.level << "|" << i.st << "|" << i.page_id;
     return out;
 }
 // ======================================================================
-class Record
-{
-public:
-    int begin, end, key_num;
-    Record(int x, int y, int z) :
-        begin(x),
-        end(y),
-        key_num(z) {}
-};
-ostream& operator << (ostream &out, const Record &i)
-{
-    cout << "(" << i.begin << "," << i.end << ")" << " |s: " << (i.end - i.begin + 1) << " |k: " << i.key_num ;
-    return out;
-}
-
 // ======================================================================
 // Functions
-void construct_tree(map<int, set<Key>> &tree);  // given maxlba id, push keys into set tree
+int construct_tree(map<int, set<Key>> &tree);  // given maxlba id, push keys into set tree; return cur_key_page_id
 void traverse_tree(map<int, set<Key>> m);  // traverse and print x
-void key2root(int x, int y, int l, set<Key> &k);   // given Key(x,y), push all its upper keys(<= level2) into set k
+// void key2root(int x, int y, int l, set<Key> &k);   // given Key(x,y), push all its upper keys(<= level2) into set k
 pair<int, int> cmd_gen(int size);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
 pair<int, int> find_min_max(vector<int> row);   // given a row, return <min, max> value in a pair
@@ -77,21 +68,37 @@ void upward_update(int l, map<int, set<Key>> &tree);
 int downward_update(map<int, set<Key>> &tree);     // downward remove updated tags and return #updated keys
 void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status);
 
-void construct_tree(map<int, set<Key>> &tree)
+// structure
+int construct_tree(map<int, set<Key>> &tree)
 {
     int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
     int MLI = L - 1;    // max level id
-    // build from level 1 to level N
-    for(int i = 0; i < L; i ++) {
+    int cur_page_id = 0;
+    int cur_page_key_num = 0;
+    // build tree
+    for(int i = MLI; i >= 0; i --) {
         // size: #lba this key covered
         // offset: offset for begin & end of one key
         int size = pow(KPP, MLI - i);
         int offset = size - 1;
         set<Key> tree_level;
-        for(int j = 0; j <= Maxlba; j += size)
-            tree_level.insert(Key(j, j+offset, i, Status::valid));
+        if(i == MLI) {
+            for(int j = 0; j <= Maxlba; j += size)
+                tree_level.insert(Key(j, j+offset, i, Status::valid, -1));
+        }
+        else {
+            for(int j = 0; j <= Maxlba; j += size) {
+                tree_level.insert(Key(j, j+offset, i, Status::valid, cur_page_id));
+                cur_page_key_num ++;
+                if(cur_page_key_num == KPP) {
+                    cur_page_id ++;
+                    cur_page_key_num = 0;
+                }
+            }
+        }
         tree[i] = tree_level;
     }
+    return (cur_page_key_num == 0) ?(cur_page_id - 1) : cur_page_id;
 }
 void traverse_tree(map<int, set<Key>> tree)
 {
@@ -100,31 +107,33 @@ void traverse_tree(map<int, set<Key>> tree)
     for(auto i: tree) {
         cout << "level: " << i.first << endl;
         // skip last level
-        // if(i.first == L - 1) {
-        //     cout << "skip\n";
-        //     break;
-        // }
-        // print leaves by level
+        if(i.first == L - 1) {
+            cout << "skip\n";
+            break;
+        }
+        // print each key
         for(auto j: i.second)
             cout << j << endl;
         cout << endl;
     }
 }
-void key2root(int x, int y, int l, set<Key> &k)
-{
-    if(x < 0 || y < 0 || l < 0 || x > Maxlba|| y > Maxlba || l == 1) return;
-    else {
-        k.insert(Key(x, y, l));
-        // buttom up recursive
-        // calculate parent's key id
-        int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
-        int p_size = pow(KPP, N - (l - 1)), p_offset = p_size - 1;
-        int p_x = x / p_size;
-        key2root(p_x * p_size, p_x * p_size + p_offset, l - 1, k);
-        return;
-    }
-    return;
-}
+// void key2root(int x, int y, int l, set<Key> &k)
+// {
+//     if(x < 0 || y < 0 || l < 0 || x > Maxlba|| y > Maxlba || l == 1) return;
+//     else {
+//         k.insert(Key(x, y, l));
+//         // buttom up recursive
+//         // calculate parent's key id
+//         int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+//         int p_size = pow(KPP, N - (l - 1)), p_offset = p_size - 1;
+//         int p_x = x / p_size;
+//         key2root(p_x * p_size, p_x * p_size + p_offset, l - 1, k);
+//         return;
+//     }
+//     return;
+// }
+
+// cmd
 pair<int, int> cmd_gen(int size)
 {
     int a, b = -1;
@@ -158,10 +167,10 @@ pair<int, int> find_min_max(vector<int> row)
     return make_pair(min, max);
 }
 
-
-// mark data as invalid
+// pre-sanitiza
 void mark_data(pair<int, int> data, map<int, set<Key>> &tree)
 {
+    // mark input chunk of LBA as invalid
     int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
     int MLI = L - 1;    // max level id
 
@@ -169,7 +178,8 @@ void mark_data(pair<int, int> data, map<int, set<Key>> &tree)
         update_key_status(tree, make_pair(i, i), MLI, Status::invalid);
     }
 }
-// consider levely update with sanitize algorithm
+
+// sanitize
 void upward_update(int l, map<int, set<Key>> &tree)
 {
     // recursively perform sanitize algorithm on level l
@@ -259,19 +269,7 @@ int main()
         return 0; 
     }
     int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
-    int MLI = L - 1;    // max level id
-
-// desiginated data mode: data by one set of input
-    // {
-    //     int data_begin, data_end;
-    //     cout << "input data_begin, data_end\n";
-    //     cin >> data_begin >> data_end;
-    //     map<int, set<Key>> tree;
-    //     construct_tree(tree);
-    //     mark_data(make_pair(data_begin, data_end), tree);
-    //     upward_update(MLI, tree);
-    //     cout << downward_update(tree) << endl;
-    // }
+    int MLI = L - 1;    // max level id    
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
