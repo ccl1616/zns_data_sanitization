@@ -59,13 +59,12 @@ ostream& operator << (ostream &out, const Key &i)
 // Functions
 int construct_tree(map<int, set<Key>> &tree);  // given maxlba id, push keys into set tree; return cur_key_page_id
 void traverse_tree(map<int, set<Key>> m);  // traverse and print x
-// void key2root(int x, int y, int l, set<Key> &k);   // given Key(x,y), push all its upper keys(<= level2) into set k
 pair<int, int> cmd_gen(int size);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
 pair<int, int> find_min_max(vector<int> row);   // given a row, return <min, max> value in a pair
 void mark_data(pair<int, int> data, map<int, set<Key>> &tree);
 void upward_update(int l, map<int, set<Key>> &tree);
-int downward_update(map<int, set<Key>> &tree);     // downward remove updated tags and return #updated keys
+pair<int, int> downward_update(map<int, set<Key>> &tree);     // downward remove updated tags and return (#updated keys,#R/W key pages)
 void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status);
 
 // structure
@@ -117,21 +116,6 @@ void traverse_tree(map<int, set<Key>> tree)
         cout << endl;
     }
 }
-// void key2root(int x, int y, int l, set<Key> &k)
-// {
-//     if(x < 0 || y < 0 || l < 0 || x > Maxlba|| y > Maxlba || l == 1) return;
-//     else {
-//         k.insert(Key(x, y, l));
-//         // buttom up recursive
-//         // calculate parent's key id
-//         int N = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
-//         int p_size = pow(KPP, N - (l - 1)), p_offset = p_size - 1;
-//         int p_x = x / p_size;
-//         key2root(p_x * p_size, p_x * p_size + p_offset, l - 1, k);
-//         return;
-//     }
-//     return;
-// }
 
 // cmd
 pair<int, int> cmd_gen(int size)
@@ -230,19 +214,21 @@ void upward_update(int l, map<int, set<Key>> &tree)
     if(modification) upward_update(l - 1, tree);
     return;
 }
-int downward_update(map<int, set<Key>> &tree)
+pair<int, int> downward_update(map<int, set<Key>> &tree)
 {
     // return #updated keys and alter updated keys -> valid keys
     int total_updated_keys = 0;
+    set<int> page_collector;
     for(auto i: tree) {
         for(auto key: i.second) {
             if(key.st == Status::updated) {
+                page_collector.insert(key.page_id);
                 total_updated_keys ++;
                 update_key_status(tree, make_pair(key.begin, key.end), key.level, Status::valid);
             }
         }
     }
-    return total_updated_keys;
+    return make_pair(total_updated_keys, page_collector.size());
 }
 void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
 {
@@ -273,11 +259,14 @@ int main()
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
-    ofs << "size mean min max\n";
+    ofs << "size k_mean k_min k_max | p_min p_min p_max\n";
     for(int i = 0; i < exp; i ++) {
         int size = pow(2, i);
-        map<int, int> record;   // (#updated keys, number of repitition)
-        float sum = 0;
+        map<int, int> record_key_num;   // (#updated keys, number of repitition)
+        map<int, int> record_page_num;   // (#R/W pages, number of repitition)
+
+        float sum_key_num = 0;
+        float sum_page_num = 0;
         // for this size, do several cmd
         for(int j = 0; j < cmd_per_group; j ++) {
             pair<int, int> data = cmd_gen(size);
@@ -288,22 +277,22 @@ int main()
             mark_data(make_pair(data.first, data.second), tree);
             upward_update(MLI, tree);
 
-            int key_num = downward_update(tree);
-            record[key_num] ++;
-            sum += key_num;
-        }
-        // calculate min, mean, max
-        auto it_min = record.begin();
-        int min = it_min->first;
-        auto it_max = record.rbegin();
-        int max = it_max->first;
-        float mean = sum / cmd_per_group;
+            pair<int, int> keynum_pagenum = downward_update(tree);
+            record_key_num[keynum_pagenum.first] ++;
+            sum_key_num += keynum_pagenum.first;
 
-        ofs << "2^" << i << " " << mean << " " << min << " " << max << " | ";
-        for(auto j: record) {
-            for(int k = 0; k < j.second; k ++)
-                ofs << j.first << " ";
+            record_page_num[keynum_pagenum.second] ++;
+            sum_page_num += keynum_pagenum.second;
         }
+        // calculate updated key
+        int min = record_key_num.begin()->first, max = record_key_num.rbegin()->first;
+        float mean = sum_key_num / cmd_per_group;
+        ofs << "2^" << i << " " << mean << " " << min << " " << max << " | ";
+        // calculate R/W pages
+        min = record_page_num.begin()->first, max = record_page_num.rbegin()->first;
+        mean = sum_page_num / cmd_per_group;
+        ofs << mean << " " << min << " " << max;
+
         ofs << endl;
     }
 
