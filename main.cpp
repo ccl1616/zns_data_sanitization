@@ -259,7 +259,7 @@ int main()
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
-    ofs << "size k_mean k_min k_max | p_min p_min p_max\n";
+    ofs << "size k_mean k_min k_max | p_min p_min p_max | #page_result\n";
     for(int i = 0; i < exp; i ++) {
         int size = pow(2, i);
         map<int, int> record_key_num;   // (#updated keys, number of repitition)
@@ -291,7 +291,12 @@ int main()
         // calculate R/W pages
         min = record_page_num.begin()->first, max = record_page_num.rbegin()->first;
         mean = sum_page_num / cmd_per_group;
-        ofs << mean << " " << min << " " << max;
+        ofs << mean << " " << min << " " << max << " | ";
+
+        // print out record_page_num
+        for(auto k: record_page_num) {
+            ofs << k.first << "*" << k.second << " ";
+        }
 
         ofs << endl;
     }
