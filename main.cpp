@@ -227,7 +227,8 @@ void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Sta
     tree[l].insert(Key(data.first, data.second, l, new_status));
 }
 
-// ======================================================================
+// ====================================================================================
+// ====================================================================================
 int main()
 {
     // redirect output
@@ -260,7 +261,6 @@ int main()
         // for this size, do several cmd
         for(int j = 0; j < cmd_per_group; j ++) {
             pair<int, int> data = cmd_gen(size);
-            // cout << size << " " << data.first << " " << data.second << endl;
 
             map<int, set<Key>> tree;
             construct_tree(tree);
