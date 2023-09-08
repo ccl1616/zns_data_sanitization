@@ -61,7 +61,6 @@ int construct_tree(map<int, set<Key>> &tree);  // given maxlba id, push keys int
 void traverse_tree(map<int, set<Key>> m);  // traverse and print x
 pair<int, int> cmd_gen(int size);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
-pair<int, int> find_min_max(vector<int> row);   // given a row, return <min, max> value in a pair
 void mark_data(pair<int, int> data, map<int, set<Key>> &tree);
 void upward_update(int l, map<int, set<Key>> &tree);
 pair<int, int> downward_update(map<int, set<Key>> &tree);     // downward remove updated tags and return (#updated keys,#R/W key pages)
@@ -140,15 +139,6 @@ int rand_gen(int min, int max)
     return abs(distrib(gen));
 // normal distribution
     
-}
-pair<int, int> find_min_max(vector<int> row)
-{
-    int min = INT_MAX, max = -1;
-    for(auto i: row) {
-        if(i > max) max = i;
-        if(i < min) min = i;
-    }
-    return make_pair(min, max);
 }
 
 // pre-sanitiza
