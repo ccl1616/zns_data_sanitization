@@ -26,12 +26,20 @@ ostream& operator << (ostream &out, const Key &i)
 // write ================================================================
 void Tree::write_data(int size)
 {
+    if(write_pointer > Maxlba) {
+        cout << "disk is full, no more write\n";
+        return;
+    }
     // at level [MLI], add n data
     for(int i = 0; i < size; i ++) {
         tree[MLI].insert(Key(write_pointer, write_pointer, MLI, Status::valid, -1));
         write_pointer ++;
+        if(write_pointer > Maxlba)
+            break;
     }
+    
     // call key_manager to manage keys
+    key_manager(MLI);
 }
 void Tree::write_full()
 {
@@ -40,7 +48,7 @@ void Tree::write_full()
     // build tree
     for(int i = MLI; i >= 0; i --) {
         // size: #lba this key covered
-        // offset: offset for begin & end of one key
+        // offset: offset = j-i for k(i,j)
         int size = pow(KPP, MLI - i);
         int offset = size - 1;
         set<Key> tree_level;
@@ -53,9 +61,8 @@ void Tree::write_full()
                 tree_level.insert(Key(j, j+offset, i, Status::valid, cur_key_page_id));
                 cur_key_page_capacity ++;
                 if(cur_key_page_capacity >= KPP) {
-                    cur_key_page_id ++;
                     cur_key_page_capacity = 0;
-                    // to check
+                    cur_key_page_id ++;
                 }
             }
         }
@@ -68,7 +75,56 @@ void Tree::write_full()
     }
     write_pointer = Maxlba;
 }
-void Tree::key_manager(){}
+void Tree::key_manager(int lv)
+{
+    if(lv == 0) {
+        add_one_key(0, Maxlba, 0, Status::valid);
+        return;
+    } 
+    else if(tree[lv].size() / KPP < 1) return;
+    int size = pow(KPP, MLI - lv);
+    // if KPP consecutive keys exist, create their parent key
+    int lba_begin = 0;
+    int count = 0;
+    int par_begin = 0, par_end;
+    int added = 0;
+    for(auto key: tree[lv]) {
+        if(key.begin == lba_begin && (key.end - key.begin == (size - 1))) {
+            count ++;
+            lba_begin += size;
+            if(count == KPP) {
+                // create a parent key
+                par_end = key.begin + size - 1;
+                added += add_one_key(par_begin, par_end, lv - 1, Status::valid);
+                // post adding
+                par_begin = par_end + 1;
+                count = 0;
+            }
+        }
+        else break;
+    }
+    // check previous level
+    key_manager(lv - 1);
+    return;
+}
+
+bool Tree::add_one_key(int begin, int end, int lv, Status s)
+{
+    set<Key>::iterator it = tree[lv].find(Key(begin, end, lv));
+    if(it != tree[lv].end()) return false;
+
+    if(cur_key_page_capacity == KPP) {
+        cur_key_page_capacity = 0;
+        cur_key_page_id ++;
+    }
+    tree[lv].insert(Key(begin, end, lv, s, cur_key_page_id));
+    cur_key_page_capacity ++;
+    // if(cur_key_page_capacity >= KPP) {
+    //     cur_key_page_capacity = 0;
+    //     cur_key_page_id ++;
+    // } assume KPP > 1
+    return true;
+}
 
 // sanitize =============================================================
 void Tree::mark_data(pair<int, int> data)
