@@ -157,7 +157,10 @@ void mark_data(pair<int, int> data, map<int, set<Key>> &tree)
 void upward_update(int l, map<int, set<Key>> &tree)
 {
     // recursively perform sanitize algorithm on level l
-    if(l == 0) return;
+    if(l == 0) {
+        // update_key_status(tree, make_pair(0, Maxlba), 0, Status::updated);
+        return;
+    }
 
 // algorithm
     int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
@@ -218,13 +221,19 @@ pair<int, int> downward_update(map<int, set<Key>> &tree)
             }
         }
     }
+    // check each page id
+    cout << "page_collector: ";
+    for(auto i: page_collector)
+        cout << i << " ";
+    cout << endl;
+
     return make_pair(total_updated_keys, page_collector.size());
 }
 void update_key_status(map<int, set<Key>> &tree, pair<int, int> data, int l, Status new_status)
 {
     auto it = tree[l].find(Key(data.first, data.second, l));
     tree[l].erase(it);
-    tree[l].insert(Key(data.first, data.second, l, new_status));
+    tree[l].insert(Key(data.first, data.second, l, new_status, it->page_id));
 }
 
 // ====================================================================================
@@ -250,7 +259,7 @@ int main()
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
-    ofs << "size k_mean k_min k_max | p_min p_min p_max | #page_result\n";
+    ofs << "size k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
     for(int i = 0; i < exp; i ++) {
         int size = pow(2, i);
         map<int, int> record_key_num;   // (#updated keys, number of repitition)
@@ -273,6 +282,7 @@ int main()
 
             record_page_num[keynum_pagenum.second] ++;
             sum_page_num += keynum_pagenum.second;
+
         }
         // calculate updated key
         int min = record_key_num.begin()->first, max = record_key_num.rbegin()->first;
