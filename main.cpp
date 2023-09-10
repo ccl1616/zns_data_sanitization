@@ -25,11 +25,22 @@ int main()
     cin >> exp >> KPP >> cmd_per_group;
     
     Maxlba = pow(2, exp) - 1;
-    int L = ceil(log2(Maxlba+1) / log2(KPP)) + 1;   // total level num
+    int L = ceil(exp / log2(KPP)) + 1;   // total level num
     if(Maxlba < 3) { 
         cout << "too small\n"; 
         return 0; 
     }
+// test
+    Tree zns(Maxlba, KPP, L);
+    zns.traverse();
+    zns.write_data(17);
+    cout << "after write\n";
+    zns.traverse();
+
+    zns.write_data(10);
+    cout << "\nafter write\n";
+    zns.traverse();
+    return 0;
 
 // chart mode: make chart automatically
     // data size for each group: 2^i
