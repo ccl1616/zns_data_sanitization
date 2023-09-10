@@ -31,17 +31,7 @@ int main()
         return 0; 
     }
 // test
-    Tree zns(Maxlba, KPP, L);
-    zns.traverse();
-    zns.write_data(17);
-    cout << "after write\n";
-    zns.traverse();
-
-    zns.write_data(10);
-    cout << "\nafter write\n";
-    zns.traverse();
-    return 0;
-
+    
 // chart mode: make chart automatically
     // data size for each group: 2^i
     ofs << "size k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
@@ -57,7 +47,12 @@ int main()
             pair<int, int> data = cmd_gen(size, Maxlba);
 
             Tree zns(Maxlba, KPP, L);
-            zns.write_full();
+            zns.write_data(Maxlba + 1);     // write to full
+
+            if(zns.tree[zns.MLI].size() != Maxlba + 1) {
+                cout << "Error:trying to sanitize a not full zone\n";
+                return 1;
+            }
             pair<int, int> keynum_pagenum = zns.sanitize(data);
 
             record_key_num[keynum_pagenum.first] ++;
