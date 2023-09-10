@@ -50,7 +50,7 @@ class Tree
 {
 public:
     map<int, set<Key>> tree;
-    int write_pointer;  // the LBA that can do append write
+    int write_pointer;  // the LBA that can do append write;;; [MLI].size == LBA num
     int cur_key_page_id, cur_key_page_capacity;
     int Maxlba, KPP;
     int L, MLI;
@@ -60,9 +60,8 @@ public:
     Tree() : 
         write_pointer(0), cur_key_page_id(0), cur_key_page_capacity(0), Maxlba(0), KPP(0), L(0), MLI(0) {}
 // write
-    void write_data(int size);
+    void write_data(int size);  // write append by input data size
     void write_full();
-    // write append by input data size
     // if size == fullsize, then this is a write all command.
     void key_manager();
     // sub function for write_data. create parent keys if needed.
@@ -77,6 +76,7 @@ public:
 
 // misc
     void traverse();    // traverse this tree and print out keys
+    void print_member();
 };
 
 // ======================================================================

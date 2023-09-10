@@ -24,7 +24,15 @@ ostream& operator << (ostream &out, const Key &i)
 // =============                   Tree                      ============
 // ======================================================================
 // write ================================================================
-void Tree::write_data(int size){}
+void Tree::write_data(int size)
+{
+    // at level [MLI], add n data
+    for(int i = 0; i < size; i ++) {
+        tree[MLI].insert(Key(write_pointer, write_pointer, MLI, Status::valid, -1));
+        write_pointer ++;
+    }
+    // call key_manager to manage keys
+}
 void Tree::write_full()
 {
     cur_key_page_id = 0;
@@ -58,6 +66,7 @@ void Tree::write_full()
         cur_key_page_id --;
         cur_key_page_capacity = KPP;
     }
+    write_pointer = Maxlba;
 }
 void Tree::key_manager(){}
 
@@ -167,15 +176,22 @@ void Tree::traverse()
     for(auto i: tree) {
         cout << "level: " << i.first << endl;
         // skip last level
-        if(i.first == L - 1) {
-            cout << "skip\n";
-            break;
-        }
+        // if(i.first == L - 1) {
+        //     cout << "skip\n";
+        //     break;
+        // }
         // print each key
         for(auto j: i.second)
             cout << j << endl;
         cout << endl;
     }
+}
+void Tree::print_member()
+{
+    cout << 
+    write_pointer << " " << cur_key_page_id << " " << cur_key_page_capacity << " "
+    << Maxlba << " " << KPP << " "
+    << L << " " << MLI << endl;
 }
 
 pair<int, int> cmd_gen(int size, int maxlba)
