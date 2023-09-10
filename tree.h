@@ -69,13 +69,18 @@ public:
 
 // sanitize
     void mark_data(pair<int, int> data); // mark data chunk as invalid
-    void sanitize(ofstream ofs);    // dump result
+    pair<int, int> sanitize(pair<int, int> data);    // given target data, return updated keynum, pagenum
 // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
     pair<int, int> downward_update();     // downward remove updated tags and return (#updated keys,#R/W key pages)
     void update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
 // misc
-    void traverse();    // traverse this tree
+    void traverse();    // traverse this tree and print out keys
 };
 
+// ======================================================================
+// =============                   Misc                      ============
+// ======================================================================
+pair<int, int> cmd_gen(int size, int maxlba);  // given size, return valid data id by the chunk size
+int rand_gen(int min, int max); // pure rand_gen of range [min, max]
