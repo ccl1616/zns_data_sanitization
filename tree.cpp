@@ -10,6 +10,9 @@
 
 #include "tree.h"
 
+// ======================================================================
+// =============                   Key                      =============
+// ======================================================================
 // output overload
 ostream& operator << (ostream &out, const Key &i)
 {
@@ -17,9 +20,11 @@ ostream& operator << (ostream &out, const Key &i)
     return out;
 }
 
-// write =================================================
-void Tree::write_data(int size)
-{}
+// ======================================================================
+// =============                   Tree                      ============
+// ======================================================================
+// write ================================================================
+void Tree::write_data(int size){}
 void Tree::write_full()
 {
     cur_key_page_id = 0;
@@ -42,6 +47,7 @@ void Tree::write_full()
                 if(cur_key_page_capacity >= KPP) {
                     cur_key_page_id ++;
                     cur_key_page_capacity = 0;
+                    // to check
                 }
             }
         }
@@ -53,20 +59,108 @@ void Tree::write_full()
         cur_key_page_capacity = KPP;
     }
 }
-// write append by input data size
-// if size == fullsize, then this is a write all command.
 void Tree::key_manager(){}
-// sub function for write_data. create parent keys if needed.
 
-// sanitize =================================================
-void Tree::mark_data(pair<int, int> data){}
-void Tree::sanitize(ofstream ofs){}
+// sanitize =============================================================
+void Tree::mark_data(pair<int, int> data)
+{
+    // mark input chunk of LBA as invalid
+    for(int i = data.first; i <= data.second; i ++) {
+        update_key_status(make_pair(i, i), MLI, Status::invalid);
+    }
+}
+pair<int, int> Tree::sanitize(pair<int, int> data)
+{
+    // sanitize data and send report to ofs
+    mark_data(data);
+    upward_update(MLI);
+    pair<int, int> keynum_pagenum = downward_update();
+    return keynum_pagenum;
+}
 // sanitize subfunction
-void Tree::upward_update(int lv){}
-// pair<int, int> Tree::downward_update(){}
-void Tree::update_key_status(pair<int, int> data, int lv, Status new_status){}
+void Tree::upward_update(int lv)
+{
+    // recursively perform sanitize algorithm on level l
+    if(lv == 0) {
+        // update_key_status(tree, make_pair(0, Maxlba), 0, Status::updated);
+        return;
+    }
+// algorithm
+    int size_parent = pow(KPP, MLI - (lv - 1));
+    int num_parent = (Maxlba + 1) / size_parent;  // Maxlba/size = #key per level
+    int size = pow(KPP, MLI - lv); 
+    bool modification = false;
+    for(int i = 0; i < num_parent; i ++) {
+        // check on level l
+        vector<int> record(3, 0);   // record number for subkeys status
+        // id of first subkey
+        pair<int, int> data = make_pair(i * size_parent, i * size_parent + (size - 1));
+        for(int j = 0; j < KPP; j ++) {
+            // check KPP keys
+            set<Key>::iterator it = tree[lv].find(Key(data.first, data.second, lv));
+            if(it == tree[lv].end()) {
+                cout << "cant find in level " << lv << endl;
+                break;
+            }
+            record[it->st] ++;
+            // data_begin += size;
+            pair<int, int> data_next = make_pair(data.first + size, data.first + size + (size - 1));
+            swap(data, data_next);
+        }
+        // if all N keys are invalid, mark parent as invalid
+        // else N keys includes mixed status with valid key, mark parent as updated
+        // (if no any updated, keep it as valid)
+        data = make_pair(i * size_parent, i * size_parent + (size_parent - 1));
+        // update parent based on result
+        if(record[Status::invalid] == KPP) {
+            // update parent as invalid
+            update_key_status(data, lv - 1, Status::invalid);
+            modification = true;
+        }
+        else if(record[Status::valid] == KPP) {
+            // keep parent as valid
+        }
+        else {
+            // mark as updated
+            update_key_status(data, lv - 1, Status::updated);
+            modification = true;
+        }
+    }
+    if(modification) upward_update(lv - 1);
+    return;
+}
+pair<int, int> Tree::downward_update()
+{
+    // return #updated keys and alter updated keys to valid keys
+    int total_updated_keys = 0;
+    set<int> page_collector;
+    for(auto i: tree) {
+        for(auto key: i.second) {
+            if(key.st == Status::updated) {
+                page_collector.insert(key.page_id);
+                total_updated_keys ++;
+                update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
+            }
+        }
+    }
+    // check each page id
+    cout << "page_collector: ";
+    for(auto i: page_collector)
+        cout << i << " ";
+    cout << endl;
 
-// misc =================================================
+    return make_pair(total_updated_keys, page_collector.size());
+}
+void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
+{
+    auto it = tree[lv].find(Key(data.first, data.second, lv));
+    tree[lv].erase(it);
+    tree[lv].insert(Key(data.first, data.second, lv, new_status, it->page_id));
+}
+
+// ======================================================================
+// =============                   Misc                      ============
+// ======================================================================
 void Tree::traverse()
 {
     // print tree, top-bottom
@@ -82,4 +176,28 @@ void Tree::traverse()
             cout << j << endl;
         cout << endl;
     }
+}
+
+pair<int, int> cmd_gen(int size, int maxlba)
+{
+    int a, b = -1;
+    while(b == -1) {
+        a = rand_gen(0, maxlba);   // gen a valid data id
+        if( (a + size - 1) <= maxlba) {
+            b = a + size - 1;
+            return make_pair(a, b);
+        }
+    }
+    cout << "rand_gen fail\n";
+    return make_pair(0, 0);
+}
+int rand_gen(int min, int max)
+{
+// uniform distribution
+    std::random_device rd;  // a seed source for the random number engine
+    std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
+    std::uniform_int_distribution<> distrib(min, max); // generated by gen into an int in [a, b]
+    return abs(distrib(gen));
+// normal distribution
+    
 }
