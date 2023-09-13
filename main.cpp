@@ -31,7 +31,11 @@ int main()
         return 0; 
     }
 // test
-    
+    for(int i = 0; i < 50; i ++) {
+        pair<int, int> p = cmd_gen(Mode::by_key, KPP, KPP, Maxlba);
+        cout << p.first << " " << p.second << endl;
+    }
+    return 0;
 // chart mode: make chart automatically
     // data size for each group: 2^i
     ofs << "size k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
@@ -44,7 +48,7 @@ int main()
         float sum_page_num = 0;
         // for this size, do several cmd
         for(int j = 0; j < cmd_per_group; j ++) {
-            pair<int, int> data = cmd_gen(size, Maxlba);
+            pair<int, int> data = cmd_gen(Mode::by_rand, size, KPP, Maxlba);
 
             Tree zns(Maxlba, KPP, L);
             zns.write_data(Maxlba + 1);     // write to full
