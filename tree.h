@@ -8,6 +8,7 @@ using namespace std;
 // =============                   Key                      =============
 // ======================================================================
 enum Status {valid, updated, invalid};
+enum Mode {by_rand, by_key};
 class Key
 {
 public:
@@ -81,5 +82,5 @@ public:
 // ======================================================================
 // =============                   Misc                      ============
 // ======================================================================
-pair<int, int> cmd_gen(int size, int maxlba);  // given size, return valid data id by the chunk size
+pair<int, int> cmd_gen(Mode md, int size, int kpp, int maxlba);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
