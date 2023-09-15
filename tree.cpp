@@ -32,7 +32,7 @@ void Tree::write_data(int size)
     }
     // at level [MLI], add n data
     for(int i = 0; i < size; i ++) {
-        tree[MLI].insert(Key(write_pointer, write_pointer, MLI, Status::valid, -1));
+        add_one_key(write_pointer, write_pointer, MLI, Status::valid);
         write_pointer ++;
         if(write_pointer > Maxlba)
             break;
@@ -82,8 +82,17 @@ void Tree::key_manager(int lv)
         return;
     } 
     else if(tree[lv].size() / KPP < 1) return;
-    int size = pow(KPP, MLI - lv);
+
+    // write cmd. device key special handler
+    if(tree[MLI].size() == 2) {
+        // if device key non-exist, create a device key
+        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+        if(it == tree[0].end())
+            add_one_key(0, Maxlba, 0, Status::valid);
+    }
+
     // if KPP consecutive keys exist, create their parent key
+    int size = pow(KPP, MLI - lv);
     int lba_begin = 0;
     int count = 0;
     int par_begin = 0, par_end;
@@ -196,7 +205,7 @@ void Tree::upward_update(int lv)
 }
 pair<int, int> Tree::downward_update()
 {
-    // return #updated keys and alter updated keys to valid keys
+    // record #updated keys and #updated key pages. alter updated keys to valid keys
     int total_updated_keys = 0;
     set<int> page_collector;
     for(auto i: tree) {
@@ -239,8 +248,8 @@ void Tree::traverse()
         // print each key
         for(auto j: i.second)
             cout << j << endl;
-        cout << endl;
     }
+    cout << "wp: " << write_pointer << "\n\n";
 }
 void Tree::print_member()
 {
