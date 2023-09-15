@@ -31,10 +31,22 @@ int main()
         return 0; 
     }
 // test
-    for(int i = 0; i < 50; i ++) {
-        pair<int, int> p = cmd_gen(Mode::by_key, KPP, KPP, Maxlba);
-        cout << p.first << " " << p.second << endl;
-    }
+    Tree zns(Maxlba, KPP, L);
+    zns.write_data(1);
+    cout << "write 1\n";
+    zns.traverse();
+
+    cout << "write 1\n";
+    zns.write_data(1);
+    zns.traverse();
+
+    cout << "write 13\n";
+    zns.write_data(13);
+    zns.traverse();
+
+    cout << "write 1\n";
+    zns.write_data(1);
+    zns.traverse();
     return 0;
 // chart mode: make chart automatically
     // data size for each group: 2^i
