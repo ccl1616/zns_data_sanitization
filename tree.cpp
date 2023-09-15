@@ -81,15 +81,14 @@ void Tree::key_manager(int lv)
         add_one_key(0, Maxlba, 0, Status::valid);
         return;
     } 
-    else if(tree[lv].size() / KPP < 1) return;
-
-    // write cmd. device key special handler
-    if(tree[MLI].size() == 2) {
-        // if device key non-exist, create a device key
+    else if(write_pointer == 2) {
+        // write cmd. device key special handler
+        // if device key is not yet exist when data size==2, create a device key
         set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
         if(it == tree[0].end())
             add_one_key(0, Maxlba, 0, Status::valid);
     }
+    else if(tree[lv].size() / KPP < 1) return;
 
     // if KPP consecutive keys exist, create their parent key
     int size = pow(KPP, MLI - lv);
@@ -239,6 +238,8 @@ void Tree::traverse()
 {
     // print tree, top-bottom
     for(auto i: tree) {
+        if(i.second.size() == 0)
+            continue;
         cout << "level: " << i.first << endl;
         // skip last level
         // if(i.first == L - 1) {
