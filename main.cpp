@@ -93,6 +93,7 @@ int main(int argc, char * argv[])
     }
     else if(vec[0] == "-s") {
         cout << "snia\n";
+        // organize trace
         /*
         for cmd
             // write to full, maybe use different traces everytime
@@ -100,6 +101,10 @@ int main(int argc, char * argv[])
         */
     }
 
+    // print spec
+    for(auto i: vec)
+        ofs << i << " ";
+    ofs << endl;
     // close output file
     ofs.close();
     return 0;
