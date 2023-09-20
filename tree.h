@@ -61,10 +61,10 @@ public:
     Tree() : 
         write_pointer(0), cur_key_page_id(0), cur_key_page_capacity(0), Maxlba(0), KPP(0), L(0), MLI(0) {}
 // write
-    void write_data(int size);  // write append by input data size
+    int write_data(int size);  // write append by input data size. return # updated key pages
     void write_full(); // if size == fullsize, write_data() == write_full()
-    void key_manager(int lv); // sub function for write_data. create parent keys if needed.
-    bool add_one_key(int begin, int end, int lv, Status s);     // call this function to add a new key and update key_page info
+    int key_manager(int lv, set<int> &page_collector); // sub function for write_data. create parent keys if needed. return # updated key pages
+    int add_one_key(int begin, int end, int lv, Status s);     // call this function to add a new key and update key_page info, return key page_id
 
 // sanitize
     void mark_data(pair<int, int> data); // mark data chunk as invalid

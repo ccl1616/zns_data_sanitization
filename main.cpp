@@ -14,7 +14,8 @@ using namespace std;
 // ====================================================================================
 int main(int argc, char * argv[])
 {
-    // get input arguments : ./main -k -r <exp> <KPP> <cmd>
+    // key mode ./main -k -r <exp> <KPP> <cmd>
+    // snia mode ./main -s -r <exp> <KPP> <cmd>
     // vec: -k -r <exp> <KPP> <cmd>
     if(argc != 6) {
         cout << "wrong input num\n";
@@ -99,6 +100,11 @@ int main(int argc, char * argv[])
             // write to full, maybe use different traces everytime
             // sanitize
         */
+        Tree zns(Maxlba, KPP, L);
+        cout << "add " << zns.write_data(1) << endl;
+        cout << "add " << zns.write_data(4) << endl;
+        cout << "add " << zns.write_data(3) << endl;
+        cout << "add " << zns.write_data(5) << endl;
     }
 
     // print spec
