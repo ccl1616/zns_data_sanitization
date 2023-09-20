@@ -45,7 +45,8 @@ int main(int argc, char * argv[])
     }
 // test code
     
-// do different experiments
+// Different Modes
+    // Key Mode
     if(vec[0] == "-k") {
         // pure key sanitization
         ofs << "size k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
@@ -58,8 +59,6 @@ int main(int argc, char * argv[])
             float sum_page_num = 0;
             // for this size, do several cmd
             for(int j = 0; j < cmd_per_group; j ++) {
-                pair<int, int> data = cmd_gen(md, size, KPP, Maxlba);
-
                 Tree zns(Maxlba, KPP, L);
                 zns.write_data(Maxlba + 1);     // write to full
 
@@ -67,6 +66,7 @@ int main(int argc, char * argv[])
                     cout << "Error:trying to sanitize a not full zone\n";
                     return 1;
                 }
+                pair<int, int> data = cmd_gen(md, size, KPP, Maxlba);
                 pair<int, int> keynum_pagenum = zns.sanitize(data);
 
                 record_key_num[keynum_pagenum.first] ++;
@@ -92,21 +92,39 @@ int main(int argc, char * argv[])
             ofs << endl;
         }
     }
+    // SNIA Mode ./main -s -r <exp> <KPP> <cmd>
     else if(vec[0] == "-s") {
         cout << "snia\n";
-        // organize trace
-        /*
-        for cmd
-            // write to full, maybe use different traces everytime
-            // sanitize
-        */
-        Tree zns(Maxlba, KPP, L);
-        cout << "add " << zns.write_data(1) << endl;
-        cout << "add " << zns.write_data(4) << endl;
-        cout << "add " << zns.write_data(3) << endl;
-        cout << "add " << zns.write_data(5) << endl;
-    }
+        // input file
+        ifstream ifs;
+        ifs.open("s17_01_all.txt");
+        ofs << "W_KPN\n";
 
+        for(int i = 0; i < 3; i ++) {
+            Tree zns(Maxlba, KPP, L);
+            int write_page_num = 0;
+            // SNIA write to full
+            while(zns.write_pointer <= Maxlba) {
+                // check ifs
+                if(ifs.eof()) {
+                    ifs.clear();
+                    ifs.seekg(0);   // use this to get back to beginning of file
+                    cout << "hit file end\n";
+                }
+                // get SNIA size
+                string s;
+                int size;
+                ifs >> s;
+                if(s == "") continue;
+                size = stoi(s);
+                // write
+                write_page_num += zns.write_data(size);
+            }
+            ofs << "wp: " << zns.write_pointer << " pn: " << write_page_num << endl;
+        }
+        
+        ofs << endl;
+    }
     // print spec
     for(auto i: vec)
         ofs << i << " ";
