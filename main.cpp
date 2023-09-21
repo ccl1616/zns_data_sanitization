@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
         ifs.open("s17_01_all.txt");
 
         ofs << "size write_pn | k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
-        for(int i = 0; i < 8; i ++) {
+        for(int i = 0; i < exp; i ++) {
             int size = pow(2, i);
             map<int, int> record_key_num;   // (#updated keys, number of repitition)
             map<int, int> record_page_num;   // (#R/W pages, number of repitition)
@@ -161,7 +161,7 @@ int main(int argc, char * argv[])
             ofs << "2^" << i << " ";    // size
             ofs << write_sum_page_num / cmd_per_group;  //write_pn
             ofs << " | " << mean << " " << min << " " << max << " | ";  // k
-            
+
             // calculate R/W pages
             min = record_page_num.begin()->first, max = record_page_num.rbegin()->first;
             mean = sum_page_num / cmd_per_group;
