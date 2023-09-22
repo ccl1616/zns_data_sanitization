@@ -56,18 +56,18 @@ int main(int argc, char * argv[])
     if(vec[0] == "-k") {
         cout << "Key Mode\n";
         // pure key sanitization
-        ofs << "size k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
+        ofs << "size write_pn | k_mean k_min k_max | p_mean p_min p_max | #page_result\n";
         for(int i = 0; i < exp; i ++) {
             int size = pow(2, i);
             map<int, int> record_key_num;   // (#updated keys, number of repitition)
             map<int, int> record_page_num;   // (#R/W pages, number of repitition)
 
-            float sum_key_num = 0;
-            float sum_page_num = 0;
-            // for this size, do several cmd
+            float sum_key_num = 0, sum_page_num = 0;
+            float write_sum_page_num = 0;   // for write
+            
             for(int j = 0; j < cmd_per_group; j ++) {
                 Tree zns(Maxlba, KPP, L);
-                zns.write_data(Maxlba + 1);     // write to full
+                write_sum_page_num += zns.write_data(Maxlba + 1);     // write to full
 
                 if(zns.tree[zns.MLI].size() != Maxlba + 1) {
                     cout << "Error:trying to sanitize a not full zone\n";
@@ -85,7 +85,10 @@ int main(int argc, char * argv[])
             // calculate updated key
             int min = record_key_num.begin()->first, max = record_key_num.rbegin()->first;
             float mean = sum_key_num / cmd_per_group;
-            ofs << "2^" << i << " " << mean << " " << min << " " << max << " | ";
+
+            ofs << "2^" << i << " ";    // size
+            ofs << write_sum_page_num / cmd_per_group;  //write_pn
+            ofs << " | " << mean << " " << min << " " << max << " | ";
             // calculate R/W pages
             min = record_page_num.begin()->first, max = record_page_num.rbegin()->first;
             mean = sum_page_num / cmd_per_group;
