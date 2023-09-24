@@ -122,21 +122,22 @@ int main(int argc, char * argv[])
                 Tree zns(Maxlba, KPP, L);
                 int counter = 0;
                 // write to full
-                while(zns.write_pointer <= Maxlba) {
-                    // check ifs
-                    if(ifs.eof()) {
-                        ifs.clear();
-                        ifs.seekg(0);   // use this to get back to beginning of file
-                        cout << "hit file end\n";
-                    }
+                while(zns.write_pointer <= Maxlba && !ifs.eof()) {
                     // get SNIA size
                     string s;
                     int size;
                     ifs >> s;
-                    if(s == "") continue;
-                    size = stoi(s);
-                    // write
-                    counter += zns.write_data(size);
+                    if(s != "") {
+                        size = stoi(s);
+                        // write
+                        counter += zns.write_data(size);
+                    }
+                    // check ifs
+                    if(ifs.eof()) {
+                        ifs.clear();
+                        ifs.seekg(0);   // use this to get back to beginning of file
+                        ofs << "hit file end\n";
+                    }
                 }
                 write_sum_page_num += counter;
                 cout << "write cost: " << counter << endl;
