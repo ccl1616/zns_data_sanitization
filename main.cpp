@@ -29,7 +29,7 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    ofs.open("output.txt");
+    ofs.open("output_req.txt");
 
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba;    // exponent of LBA num, LBA num = 2^exp
