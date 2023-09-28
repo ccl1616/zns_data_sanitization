@@ -1,7 +1,7 @@
 # sample Makefile, feel free to make any modification.
 RES = main.cpp tree.cpp
-EXE = main
+EXE = req
 all:
 	g++ -std=c++11 $(RES) -o $(EXE)
-clean:
-	rm $(EXE)
+# clean:
+# 	rm $(EXE)
