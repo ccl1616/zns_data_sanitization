@@ -14,8 +14,10 @@ using namespace std;
 // ====================================================================================
 int main(int argc, char * argv[])
 {
-    // key mode ./main -k -r <exp> <KPP> <cmd>
-    // snia mode ./main -s -r <exp> <KPP> <cmd>
+    // Key Mode ./main -k -r <exp> <KPP> <cmd>
+    // SNIA Mode ./main -s -r <exp> <KPP> <cmd>
+    // Request Mode ./main -r -r <exp> <KPP> <cmd>
+
     // vec: -k -r <exp> <KPP> <cmd>
     if(argc != 6) {
         cout << "wrong input num\n";
@@ -179,6 +181,12 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
+    // Request Mode ./main -r -r <exp> <KPP> <cmd>
+    else if(vec[0] == "-r") {
+        cout << "request mode" << endl;
+    }
+
+    else cout << "wrong input mode" << endl;
     // close output file
     ofs.close();
     return 0;

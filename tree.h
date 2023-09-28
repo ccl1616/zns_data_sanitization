@@ -80,6 +80,27 @@ public:
 };
 
 // ======================================================================
+// =============                Tree Req                     ============
+// ======================================================================
+class Tree_Req : public Tree
+{
+public:
+    int RPK;    // request per key
+    // info tables
+    map<int, pair<int, int>> Request_table;   // Request Id: (first LBA, Request size)
+    map<int, int> LBA_2_Request;    // LBA id - Request id
+
+    Tree_Req(int max_lba, int kpp, int l, int rpk) : 
+        Tree(max_lba, kpp, l),
+        RPK(rpk) {}
+// add a request
+    int add_request(int size);  // given request (write) size, add it to table, return request id
+// write
+    int write_data(int R_id);   // write data by table
+    int key_manager(int lv, set<int> &page_collector);
+};
+
+// ======================================================================
 // =============                   Misc                      ============
 // ======================================================================
 pair<int, int> cmd_gen(Mode md, int size, int kpp, int maxlba);  // given size, return valid data id by the chunk size

@@ -242,6 +242,44 @@ void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
 }
 
 // ======================================================================
+// =============                Tree Req                     ============
+// ======================================================================
+int Tree_Req::add_request(int size)
+{
+    int id = Request_table.size();
+    // if the size is too big to current disk, reduce write command size into available #LBA
+    int read_add_size = (write_pointer <= Maxlba) ?size :(Maxlba - write_pointer + 1);
+    Request_table[id] = make_pair(write_pointer, read_add_size);
+    return id;
+}
+int Tree_Req::write_data(int R_id)
+{
+    // given size, perform write mased on RPK
+    if(write_pointer > Maxlba) {
+        cout << "disk is full, no more write\n";
+        return -1;
+    }
+    // perform actual write, update write pointer
+    // at level MLI, add a key named with R_id
+    set<int> page_collector;    // save updated key pages id
+    page_collector.insert(add_one_key(R_id, R_id, MLI, Status::valid));
+    write_pointer += Request_table[R_id].second;  // move wp to next available LBA
+
+    // call key manager
+    // todo ...
+
+    // return # updated key pages
+    {
+        // remove unwanted key page id
+        set<int>::iterator it = page_collector.find(-1);
+        page_collector.erase(*it);  // remove page -1 if it exists
+    }
+    
+    return page_collector.size();
+}
+
+
+// ======================================================================
 // =============                   Misc                      ============
 // ======================================================================
 void Tree::traverse()
