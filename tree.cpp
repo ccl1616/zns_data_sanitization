@@ -95,6 +95,7 @@ int Tree::key_manager(int lv, set<int> &page_collector)
         set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
         if(it == tree[0].end())
             page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+        // proceed to further key adding logic
     }
     else if(tree[lv].size() / KPP < 1) return 0;
 
@@ -249,12 +250,13 @@ int Tree_Req::add_request(int size)
     int id = Request_table.size();
     // if the size is too big to current disk, reduce write command size into available #LBA
     int read_add_size = (write_pointer <= Maxlba) ?size :(Maxlba - write_pointer + 1);
+    // save request info; Request_table
     Request_table[id] = make_pair(write_pointer, read_add_size);
     return id;
 }
 int Tree_Req::write_data(int R_id)
 {
-    // given size, perform write mased on RPK
+    // given request, perform write based on RPK
     if(write_pointer > Maxlba) {
         cout << "disk is full, no more write\n";
         return -1;
@@ -265,7 +267,15 @@ int Tree_Req::write_data(int R_id)
     page_collector.insert(add_one_key(R_id, R_id, MLI, Status::valid));
     write_pointer += Request_table[R_id].second;  // move wp to next available LBA
 
-    // call key manager
+    // save request info; LBA_2_Request
+    /*
+        for a request
+        [first LBA, first LBA + size - 1] LBA are occupied by this request
+    */
+    for(int i = Request_table[R_id].first; i <= Request_table[R_id].first + Request_table[R_id].second - 1; i ++)
+        LBA_2_Request[i] = R_id;
+
+    // call key manager to create key if needed
     // todo ...
 
     // return # updated key pages
@@ -276,6 +286,42 @@ int Tree_Req::write_data(int R_id)
     }
     
     return page_collector.size();
+}
+int Tree_Req::key_manager(int lv, set<int> &page_collector)
+{
+    if(lv == 0) {
+
+    }
+    else if(lv == MLI) {
+        // request key adding logic
+        int R_id_begin = 0, R_id_end = 0, count = 0;     // starting R id, current count num
+        for(auto key: tree[MLI]) {
+            if(key.begin == R_id_begin) {
+                // starts one new round
+                count = 1;
+            }
+            else if(key.begin == R_id_end + 1) {
+                count ++;
+                R_id_end ++;
+            }
+            else break;     // non-consecutive key. shouldn't happen
+
+            if(count == RPK) {
+                // create one parent key
+                // todo...
+
+                // update for next round
+                R_id_begin += RPK;
+                count = 0;
+            }
+        }
+    }
+    else if(lv == MLI - 1) {
+
+    }
+    else {
+        // key-key adding logic
+    }
 }
 
 
