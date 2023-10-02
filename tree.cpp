@@ -263,9 +263,10 @@ void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
 
 int Tree_Req::add_request(int size)
 {
+    if(write_pointer > Maxlba) return -1;   // no more adding is allowed
     int id = Request_table.size();
     // if the size is too big to current disk, reduce write command size into available #LBA
-    int read_add_size = (write_pointer <= Maxlba) ?size :(Maxlba - write_pointer + 1);
+    int read_add_size = (write_pointer + size - 1 <= Maxlba) ?size :(Maxlba - write_pointer + 1);
     // save request info; Request_table
     Request_table[id] = make_pair(write_pointer, read_add_size);
     return id;
@@ -316,34 +317,31 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
     else if(lv == MLI) {
         // request-key adding logic
         int R_begin = 0, R_end = 0, count = 0;     // starting R id, current count num
+        bool debug = false;
         for(auto key: tree[MLI]) {
             if(key.begin == R_begin) {
                 // starts one new round
                 count = 1;
+                if(debug) cout << key.begin << endl;
             }
             else if(key.begin == R_end + 1) {
                 count ++;
                 R_end ++;
+                if(debug) cout << key.begin << endl;
             }
             else break;     // non-consecutive key. shouldn't happen
 
             if(count == RPK) {
+                if(debug) cout << R_begin << ", " << R_end << " ";
                 // create one parent key
                 page_collector.insert(add_one_key(R_begin, R_end, lv - 1, Status::valid));
                 // update for next round
-                R_begin += RPK;
+                R_begin += RPK, R_end = R_begin;
                 count = 0;
+
+                if(debug) cout << R_begin << " " << R_end << endl;
             }
         }
-        // MLI-1 level key num >= 2, then create device key
-        if(tree[MLI - 1].size() >= 2) {
-            set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
-            if(it == tree[0].end())
-                page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
-        }
-        // check previous level
-        key_manager(lv - 1, page_collector);
-        return page_collector.size();
     }
     else{
         // key-key adding logic
@@ -368,11 +366,17 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
                 count = 0;
             }
         }
-
-        // check previous level
-        key_manager(lv - 1, page_collector);
-        return page_collector.size();
     }
+    // MLI-1 level key num >= 2, then create device key
+    if(tree[MLI - 1].size() >= 2) {
+        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+        if(it == tree[0].end())
+            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+    }
+    // check previous level
+    key_manager(lv - 1, page_collector);
+    return page_collector.size();
+
 }
 void Tree_Req::create_size_table()
 {

@@ -192,8 +192,21 @@ int main(int argc, char * argv[])
     // Request Mode ./main -r -r <exp> <KPP> <RPK> <cmd>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
-        Tree zns(Maxlba, KPP, L);
-        
+        cout << Maxlba << endl;
+        // fill to full once
+        Tree_Req zns(Maxlba, KPP, L, RPK);
+
+        for(int i = 0; i < 23; i ++) {
+            if(zns.write_pointer > Maxlba) break;
+            int R_id = zns.add_request(3);
+            if(R_id == -1) break;
+            zns.write_data(R_id);
+        }
+        zns.traverse();
+
+        // for(auto i: zns.Request_table)
+        //     cout << i.first << " " << i.second.first << ", " << i.second.second << endl;
+
     }
 
     else cout << "wrong input mode" << endl;
