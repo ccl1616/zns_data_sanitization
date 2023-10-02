@@ -16,13 +16,13 @@ int main(int argc, char * argv[])
 {
     // Key Mode ./main -k -r <exp> <KPP> <cmd>
     // SNIA Mode ./main -s -r <exp> <KPP> <cmd>
-    // Request Mode ./main -r -r <exp> <KPP> <cmd>
+    // Request Mode ./main -r -r <exp> <KPP> <RPK> <cmd>
 
-    // vec: -k -r <exp> <KPP> <cmd>
-    if(argc != 6) {
+    if(argc < 6) {
         cout << "wrong input num\n";
         return 1;
     }
+    // vec: <Exp mode> <Sanitize mode> <LBA exponent> <KPP> (<RPK>) <cmd>
     vector<string> vec;
     for(int i = 1; i < argc; i ++) {
         string s(argv[i]);
@@ -34,9 +34,17 @@ int main(int argc, char * argv[])
     ofs.open("output_req.txt");
 
     // insert spec
-    int exp, KPP, cmd_per_group, Maxlba;    // exponent of LBA num, LBA num = 2^exp
-    exp = stoi(vec[2]), KPP = stoi(vec[3]), cmd_per_group = stoi(vec[4]);
-    Mode md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
+    int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
+    Mode md;
+    if(vec[0] == "-r") {
+        // -r -r <exp> <KPP> <RPK> <cmd>
+        md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
+        exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
+    }
+    else {
+        md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
+        exp = stoi(vec[2]), KPP = stoi(vec[3]), cmd_per_group = stoi(vec[4]);
+    }
 
     // calculate system spec
     Maxlba = pow(2, exp) - 1;
@@ -181,9 +189,11 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
-    // Request Mode ./main -r -r <exp> <KPP> <cmd>
+    // Request Mode ./main -r -r <exp> <KPP> <RPK> <cmd>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
+        Tree zns(Maxlba, KPP, L);
+        
     }
 
     else cout << "wrong input mode" << endl;

@@ -86,10 +86,13 @@ void Tree::write_full()
 int Tree::key_manager(int lv, set<int> &page_collector)
 {
     if(lv == 0) {
-        // page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+        // if device key not exists, create device key
+        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+        if(it == tree[0].end())
+            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
         return 0;
     } 
-    else if(write_pointer == 2) {
+    else if(write_pointer >= 2) {
         // write cmd. device key special handler
         // if device key is not yet exist when data size==2, create a device key
         set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
@@ -100,24 +103,25 @@ int Tree::key_manager(int lv, set<int> &page_collector)
     else if(tree[lv].size() / KPP < 1) return 0;
 
     // if KPP consecutive keys exist, create their parent key
-    int size = pow(KPP, MLI - lv);
+    int size = pow(KPP, MLI - lv);  // current lv size
     int lba_begin = 0;
     int count = 0;
     int par_begin = 0, par_end;
     for(auto key: tree[lv]) {
         if(key.begin == lba_begin && (key.end - key.begin == (size - 1))) {
             count ++;
-            lba_begin += size;
-            if(count == KPP) {
-                // create a parent key
-                par_end = key.begin + size - 1;
-                page_collector.insert(add_one_key(par_begin, par_end, lv - 1, Status::valid));
-                // post adding
-                par_begin = par_end + 1;
-                count = 0;
-            }
+            lba_begin += size;  // move lba_begin to next candidate
         }
-        else break;
+        else break;     // non-consecutive
+
+        if(count == KPP) {
+            // create a parent key
+            par_end = key.begin + size - 1;
+            page_collector.insert(add_one_key(par_begin, par_end, lv - 1, Status::valid));
+            // post adding
+            par_begin = par_end + 1;
+            count = 0;
+        }
     }
     // check previous level
     key_manager(lv - 1, page_collector);
@@ -242,9 +246,21 @@ void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
     tree[lv].insert(Key(data.first, data.second, lv, new_status, it->page_id));
 }
 
+
+
+// ======================================================================
+// ======================================================================
+// ======================================================================
+// ======================================================================
 // ======================================================================
 // =============                Tree Req                     ============
 // ======================================================================
+// ======================================================================
+// ======================================================================
+// ======================================================================
+
+
+
 int Tree_Req::add_request(int size)
 {
     int id = Request_table.size();
@@ -275,8 +291,8 @@ int Tree_Req::write_data(int R_id)
     for(int i = Request_table[R_id].first; i <= Request_table[R_id].first + Request_table[R_id].second - 1; i ++)
         LBA_2_Request[i] = R_id;
 
-    // call key manager to create key if needed
-    // todo ...
+    // call key manager to create parent key if needed
+    key_manager(MLI, page_collector);
 
     // return # updated key pages
     {
@@ -290,40 +306,81 @@ int Tree_Req::write_data(int R_id)
 int Tree_Req::key_manager(int lv, set<int> &page_collector)
 {
     if(lv == 0) {
-
+        // if device key not exists, create device key
+        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+        if(it == tree[0].end())
+            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+        return 0;
     }
+    else if(tree[lv].size() / KPP < 1) return 0;
     else if(lv == MLI) {
-        // request key adding logic
-        int R_id_begin = 0, R_id_end = 0, count = 0;     // starting R id, current count num
+        // request-key adding logic
+        int R_begin = 0, R_end = 0, count = 0;     // starting R id, current count num
         for(auto key: tree[MLI]) {
-            if(key.begin == R_id_begin) {
+            if(key.begin == R_begin) {
                 // starts one new round
                 count = 1;
             }
-            else if(key.begin == R_id_end + 1) {
+            else if(key.begin == R_end + 1) {
                 count ++;
-                R_id_end ++;
+                R_end ++;
             }
             else break;     // non-consecutive key. shouldn't happen
 
             if(count == RPK) {
                 // create one parent key
-                // todo...
-
+                page_collector.insert(add_one_key(R_begin, R_end, lv - 1, Status::valid));
                 // update for next round
-                R_id_begin += RPK;
+                R_begin += RPK;
                 count = 0;
             }
         }
+        // MLI-1 level key num >= 2, then create device key
+        if(tree[MLI - 1].size() >= 2) {
+            set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+            if(it == tree[0].end())
+                page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+        }
+        // check previous level
+        key_manager(lv - 1, page_collector);
+        return page_collector.size();
     }
-    else if(lv == MLI - 1) {
-
-    }
-    else {
+    else{
         // key-key adding logic
+        // if KPP consecutive keys exist, create their parent key
+        int size = size_table[lv];  // current lv size
+        int lba_begin = 0;
+        int count = 0;
+        int par_begin = 0, par_end;
+        for(auto key: tree[lv]) {
+            if(key.begin == lba_begin && (key.end - key.begin == (size - 1))) {
+                count ++;
+                lba_begin += size;  // move lba_begin to next candidate
+            }
+            else break;     // non-consecutive
+
+            if(count == KPP) {
+                // create a parent key
+                par_end = key.begin + size - 1;
+                page_collector.insert(add_one_key(par_begin, par_end, lv - 1, Status::valid));
+                // post adding
+                par_begin = par_end + 1;
+                count = 0;
+            }
+        }
+
+        // check previous level
+        key_manager(lv - 1, page_collector);
+        return page_collector.size();
     }
 }
-
+void Tree_Req::create_size_table()
+{
+    size_table[MLI - 1] = RPK;
+    for(int i = MLI - 2; i >= 0; i --) {
+        size_table[i] = size_table[i + 1] * KPP;
+    }
+}
 
 // ======================================================================
 // =============                   Misc                      ============

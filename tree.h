@@ -89,15 +89,20 @@ public:
     // info tables
     map<int, pair<int, int>> Request_table;   // Request Id: (first LBA, Request size)
     map<int, int> LBA_2_Request;    // LBA id - Request id
+    map<int, int> size_table;   // level id - size of one key in this level
 
     Tree_Req(int max_lba, int kpp, int l, int rpk) : 
         Tree(max_lba, kpp, l),
-        RPK(rpk) {}
+        RPK(rpk) 
+        {
+            create_size_table();
+        }
 // add a request
     int add_request(int size);  // given request (write) size, add it to table, return request id
 // write
     int write_data(int R_id);   // write data by table
     int key_manager(int lv, set<int> &page_collector);
+    void create_size_table();   // create size table by definition of tree; key manager need this info
 };
 
 // ======================================================================
