@@ -385,6 +385,37 @@ void Tree_Req::create_size_table()
         size_table[i] = size_table[i + 1] * KPP;
     }
 }
+pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
+{
+    if(md == Mode::by_rand) {
+        // rand LBA
+        int a, b = -1;
+        while(b == -1) {
+            a = rand_gen(0, Maxlba);   // gen a valid data id
+            if( (a + size - 1) <= Maxlba) {
+                b = a + size - 1;
+                return make_pair(a, b);
+            }
+        }
+    }
+    else {
+        return make_pair(0,0);
+    }
+}
+pair<int, int> Tree_Req::sanitize(pair<int, int> data)
+{
+    // perform key conversion
+    // lba -> actual key id
+    pair<int, int> target = make_pair(LBA_2_Request[data.first], LBA_2_Request[data.second]);
+
+    // call original sanitize
+    // sanitize data and send report to ofs
+    mark_data(data);
+    upward_update(MLI);
+    pair<int, int> keynum_pagenum = downward_update();
+    return keynum_pagenum;
+}
+
 
 // ======================================================================
 // =============                   Misc                      ============

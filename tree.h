@@ -8,7 +8,7 @@ using namespace std;
 // =============                   Key                      =============
 // ======================================================================
 enum Status {valid, updated, invalid};
-enum Mode {by_rand, by_key};
+enum Mode {by_rand, by_key, by_req, by_partial_req};
 class Key
 {
 public:
@@ -103,6 +103,9 @@ public:
     int write_data(int R_id);   // write data by table
     int key_manager(int lv, set<int> &page_collector);
     void create_size_table();   // create size table by definition of tree; key manager need this info
+// sanitize
+    pair<int, int> cmd_gen(Mode md, int size);    // based on md, return a chunk of key id that need to be updated into invalid
+    pair<int, int> sanitize(pair<int, int> data);
 };
 
 // ======================================================================

@@ -38,8 +38,11 @@ int main(int argc, char * argv[])
     Mode md;
     if(vec[0] == "-r") {
         // -r -r <exp> <KPP> <RPK> <cmd>
-        md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
+        // mode
+        if(vec[1] == "-r") md = Mode::by_rand;
+        else if(vec[1] == "-q") md = Mode::by_req;
+        else if(vec[1] == "-p") md = Mode::by_partial_req;
     }
     else {
         md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
@@ -202,10 +205,9 @@ int main(int argc, char * argv[])
             if(R_id == -1) break;
             zns.write_data(R_id);
         }
-        zns.traverse();
-
-        // for(auto i: zns.Request_table)
-        //     cout << i.first << " " << i.second.first << ", " << i.second.second << endl;
+        
+        for(auto i: zns.LBA_2_Request)
+            cout << i.first << " " << i.second << endl;
 
     }
 
