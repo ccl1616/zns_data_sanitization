@@ -205,9 +205,13 @@ int main(int argc, char * argv[])
             if(R_id == -1) break;
             zns.write_data(R_id);
         }
+        zns.traverse();
+        pair<int, int> data = make_pair(0, 16);
+        pair<int, int> result = zns.sanitize(data);
+        cout << result.first << ", " << result.second << endl;
         
-        for(auto i: zns.LBA_2_Request)
-            cout << i.first << " " << i.second << endl;
+        // for(auto i: zns.LBA_2_Request)
+        //     cout << i.first << " " << i.second << endl;
 
     }
 

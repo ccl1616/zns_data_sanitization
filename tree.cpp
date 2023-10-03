@@ -187,7 +187,7 @@ void Tree::upward_update(int lv)
             // check KPP keys
             set<Key>::iterator it = tree[lv].find(Key(data.first, data.second, lv));
             if(it == tree[lv].end()) {
-                cout << "cant find in level " << lv << endl;
+                cout << "cant find in level " << lv  << ": " << data.first << " " << data.second << endl;
                 break;
             }
             record[it->st] ++;
@@ -401,6 +401,7 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
     else {
         return make_pair(0,0);
     }
+    return make_pair(0,0);
 }
 pair<int, int> Tree_Req::sanitize(pair<int, int> data)
 {
@@ -410,9 +411,9 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data)
 
     // call original sanitize
     // sanitize data and send report to ofs
-    mark_data(data);
-    upward_update(MLI);
-    pair<int, int> keynum_pagenum = downward_update();
+    mark_data(target);
+    // upward_update(MLI);
+    // pair<int, int> keynum_pagenum = downward_update();
     return keynum_pagenum;
 }
 
