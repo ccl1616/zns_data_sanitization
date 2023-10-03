@@ -170,7 +170,7 @@ void Tree::upward_update(int lv)
 {
     // recursively perform sanitize algorithm on level l
     if(lv == 0) {
-        // update_key_status(tree, make_pair(0, Maxlba), 0, Status::updated);
+        // Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
         return;
     }
 // algorithm
@@ -242,6 +242,7 @@ pair<int, int> Tree::downward_update()
 void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
 {
     auto it = tree[lv].find(Key(data.first, data.second, lv));
+    if(it == tree[lv].end()) return;
     tree[lv].erase(it);
     tree[lv].insert(Key(data.first, data.second, lv, new_status, it->page_id));
 }
@@ -380,6 +381,7 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
 }
 void Tree_Req::create_size_table()
 {
+    size_table[MLI] = 1;
     size_table[MLI - 1] = RPK;
     for(int i = MLI - 2; i >= 0; i --) {
         size_table[i] = size_table[i + 1] * KPP;
@@ -412,11 +414,53 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data)
     // call original sanitize
     // sanitize data and send report to ofs
     mark_data(target);
-    // upward_update(MLI);
-    // pair<int, int> keynum_pagenum = downward_update();
+    upward_update(MLI);
+    pair<int, int> keynum_pagenum = downward_update();
     return keynum_pagenum;
 }
+void Tree_Req::upward_update(int lv)
+{
+    if(lv == 0) {
+        Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        return;
+    }
+// algorithm. bottom-up
+    else {
+        int chunk_size = (lv == MLI) ?RPK : KPP;
+        int quo = tree[MLI].size() / chunk_size;
+        int rem = tree[MLI].size() % chunk_size;
+        bool modification = false;
+        // check each unit of keys and decide their parent status
+        auto it = tree[lv].begin();
+        // check chunks
+        for(int i = 0; i < quo; i ++) {
+            vector<int> record(3, 0);   // record number for key status
+            for(int j = 0; j < chunk_size; j ++) {
+                record[it->st] ++;
+                it ++;
+            }
+            
+            // mark parent status based on result
+            if(record[Status::invalid] == chunk_size) {
+                pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
+                update_key_status(key, lv - 1, Status::invalid);
+                modification = true;
+            }
+            else if(record[Status::valid] != chunk_size) {
+                // should update
+                pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
+                update_key_status(key, lv - 1, Status::updated);
+                modification = true;
+            }
+        }
+        // ignore remaining keys. these keys dont have direct parent. just set device key as updated
+        if(rem != 0)
+            Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
 
+        if(modification) upward_update(lv - 1);
+        return;
+    }
+}
 
 // ======================================================================
 // =============                   Misc                      ============

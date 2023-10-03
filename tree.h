@@ -106,6 +106,7 @@ public:
 // sanitize
     pair<int, int> cmd_gen(Mode md, int size);    // based on md, return a chunk of key id that need to be updated into invalid
     pair<int, int> sanitize(pair<int, int> data);
+    void upward_update(int lv);
 };
 
 // ======================================================================
