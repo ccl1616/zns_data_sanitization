@@ -14,11 +14,14 @@ using namespace std;
 // ====================================================================================
 int main(int argc, char * argv[])
 {
-    // Key Mode ./main -k -r <exp> <KPP> <cmd>
-    // SNIA Mode ./main -s -r <exp> <KPP> <cmd>
-    // Request Mode ./main -r -r <exp> <KPP> <RPK> <cmd>
+    //                 [0] [1] [2]   [3]   [4]   [5]
+    // Key Mode ./main -k  -r  <exp> <KPP> <cmd> <out file name>
+    // SNIA Mode ./main -s -r <exp> <KPP> <cmd> <out file name>
+    //                     [0] [1] [2]   [3]   [4]   [5]   [6]
+    // Request Mode ./main -r  -r  <exp> <KPP> <RPK> <cmd> <out file name>
 
-    if(argc < 6) {
+    // check input
+    if(argc < 7) {
         cout << "wrong input num\n";
         return 1;
     }
@@ -31,8 +34,7 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    ofs.open("output_req.txt");
-
+    ofs.open(vec[vec.size() - 1]);
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
     Mode md;
@@ -48,7 +50,6 @@ int main(int argc, char * argv[])
         md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
         exp = stoi(vec[2]), KPP = stoi(vec[3]), cmd_per_group = stoi(vec[4]);
     }
-
     // calculate system spec
     Maxlba = pow(2, exp) - 1;
     int L = ceil(exp / log2(KPP)) + 1;   // total level num
@@ -56,8 +57,7 @@ int main(int argc, char * argv[])
         cout << "too small\n"; 
         return 0; 
     }
-
-    // print spec
+    // print spec to output file
     for(auto i: vec)
         ofs << i << " ";
     ofs << "\n\n";
