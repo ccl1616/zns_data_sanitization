@@ -114,4 +114,4 @@ public:
 // =============                   Misc                      ============
 // ======================================================================
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
-bool range_checker(int x, int target);  // check if log2(target)-1 < log2(x) < log2(target)+1
+int range_checker(int x, int target);  // check if log2(target)-1 < log2(x) < log2(target)+1

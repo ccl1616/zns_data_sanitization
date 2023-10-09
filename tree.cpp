@@ -435,9 +435,18 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
         while(req_begin == -1) {
             // an iteration to gen cmd
             req_begin = rand_gen(0, Request_table.size()-1); // pick a request as starting point 
-            cur_size = Request_table[req_begin].second;           
-            while(cur_size < size) {
-
+            cur_size = Request_table[req_begin].second;  
+            int checker = range_checker(cur_size, size);          
+            if(checker == 1) {
+                // find the perfect size, return result
+                return make_pair(req_begin, req_begin);
+            }
+            else if(checker == 2) {
+                // size too big, change another request to begin
+                continue;
+            }
+            else {
+                // add up
             }
         }
 
@@ -547,11 +556,15 @@ int rand_gen(int min, int max)
 // normal distribution
     
 }
-bool range_checker(int x, int target)
+int range_checker(int x, int target)
 {
     // check if log2(target)-1 < log2(x) < log2(target)+1
+    // based on relationship, return 0 | 1 | 2
     float low = (log(target) / log(2)) - 1;
     float high = (log(target) / log(2)) + 1;
     float log_x = log(x) / log(2);
-    return ( log_x > low ) && ( log_x < high);
+
+    if( log_x <= low ) return 0;
+    else if(log_x >= high) return 2;
+    else return 1;
 }
