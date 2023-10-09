@@ -77,6 +77,7 @@ public:
 // misc
     void traverse();    // traverse this tree and print out keys
     void print_member();
+    pair<int, int> cmd_gen(Mode md, int size);
 };
 
 // ======================================================================
@@ -112,5 +113,4 @@ public:
 // ======================================================================
 // =============                   Misc                      ============
 // ======================================================================
-pair<int, int> cmd_gen(Mode md, int size, int kpp, int maxlba);  // given size, return valid data id by the chunk size
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]

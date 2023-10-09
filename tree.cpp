@@ -492,13 +492,13 @@ void Tree::print_member()
     << L << " " << MLI << endl;
 }
 
-pair<int, int> cmd_gen(Mode md, int size, int kpp, int maxlba)
+pair<int, int> Tree::cmd_gen(Mode md, int size)
 {
     if(md == Mode::by_rand) {
         int a, b = -1;
         while(b == -1) {
-            a = rand_gen(0, maxlba);   // gen a valid data id
-            if( (a + size - 1) <= maxlba) {
+            a = rand_gen(0, Maxlba);   // gen a valid data id
+            if( (a + size - 1) <= Maxlba) {
                 b = a + size - 1;
                 return make_pair(a, b);
             }
@@ -508,8 +508,8 @@ pair<int, int> cmd_gen(Mode md, int size, int kpp, int maxlba)
         // generate a lba of the beginning of a key
         int a, b = -1;
         while(b == -1) {
-            a = kpp * rand_gen(0, maxlba / kpp);
-            if(a + size - 1 <= maxlba) {
+            a = KPP * rand_gen(0, Maxlba / KPP);
+            if(a + size - 1 <= Maxlba) {
                 b = a + size - 1;
                 return make_pair(a, b);
             }

@@ -86,7 +86,7 @@ int main(int argc, char * argv[])
                     cout << "Error:trying to sanitize a not full zone\n";
                     return 1;
                 }
-                pair<int, int> data = cmd_gen(md, size, KPP, Maxlba);
+                pair<int, int> data = zns.cmd_gen(md, size);
                 pair<int, int> keynum_pagenum = zns.sanitize(data);
 
                 record_key_num[keynum_pagenum.first] ++;
@@ -138,12 +138,12 @@ int main(int argc, char * argv[])
                 while(zns.write_pointer <= Maxlba && !ifs.eof()) {
                     // get SNIA size
                     string s;
-                    int size;
+                    int w_size;
                     ifs >> s;
                     if(s != "") {
-                        size = stoi(s);
+                        w_size = stoi(s);
                         // write
-                        counter += zns.write_data(size);
+                        counter += zns.write_data(w_size);
                     }
                     // check ifs
                     if(ifs.eof()) {
@@ -160,7 +160,7 @@ int main(int argc, char * argv[])
                     cout << "Error:trying to sanitize a not full zone\n";
                     return 1;
                 }
-                pair<int, int> data = cmd_gen(md, size, KPP, Maxlba);
+                pair<int, int> data = zns.cmd_gen(md, size);
                 pair<int, int> keynum_pagenum = zns.sanitize(data);
 
                 record_key_num[keynum_pagenum.first] ++;
