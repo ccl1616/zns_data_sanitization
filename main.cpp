@@ -64,6 +64,7 @@ int main(int argc, char * argv[])
 
 // test code
     // ...
+
 // Different Modes
     // Key Mode
     if(vec[0] == "-k") {
@@ -192,22 +193,65 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
-    // Request Mode ./main -r -r <exp> <KPP> <RPK> <cmd>
+    // Request Mode ./main -r -q <exp> <KPP> <RPK> <cmd>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
-        // fill to full once
-        Tree_Req zns(Maxlba, KPP, L, RPK);
+        // input file
+        ifstream ifs;
+        ifs.open("s17_01_all.txt");
 
-        for(int i = 0; i < 23; i ++) {
-            if(zns.write_pointer > Maxlba) break;
-            int R_id = zns.add_request(3);
-            if(R_id == -1) break;
-            zns.write_data(R_id);
+        // write to full
+        int counter = 0;    // count write KP
+        int min = INT16_MAX, max = -1;
+        Tree_Req zns(Maxlba, KPP, L, RPK);
+        while(zns.write_pointer <= Maxlba && !ifs.eof()) {
+            // get SNIA size
+            string s;
+            int w_size;
+            ifs >> s;
+            if(s != "") {
+                w_size = stoi(s);
+                // write
+                int R_id = zns.add_request(w_size);
+                if(R_id == -1) break;
+                counter += zns.write_data(R_id);
+
+                if(w_size > max) max = w_size;
+                if(w_size < min) min = w_size;
+            }
+            // check ifs
+            if(ifs.eof()) {
+                ifs.clear();
+                ifs.seekg(0);   // use this to get back to beginning of file
+                ofs << "hit file end\n";
+            }
         }
-        pair<int, int> data = make_pair(2, 16);     // LBA 2-16; md = by_rand
-        pair<int, int> result = zns.sanitize(data, md);
+        zns.analyzer();
         
-        cout << result.first << ", " << result.second << endl;
+        map<int, pair<int, int>> Record;
+        for(auto e: zns.candidate_request) {
+            //choose a random one from this vector
+            pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
+            pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+
+            // cout << "2^" << e.first << " ";
+            // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+            Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
+        }
+        // print record
+        ofs << "size #key #page\n";
+        for(auto i: Record) {
+            ofs << "2^" << i.first << " " << i.second.first << " " << i.second.second << endl;
+        }
+        /*
+        zns
+            analyzer
+            from size k to 2^21
+                cmd_gen(size)
+                sanitize
+                save record
+
+        */
         
     }
 

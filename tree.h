@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <vector>
 #include <fstream>
 using namespace std;
 
@@ -71,7 +72,7 @@ public:
     pair<int, int> sanitize(pair<int, int> data);    // given target data, return updated keynum, pagenum
 // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
-    pair<int, int> downward_update();     // downward remove updated tags and return (#updated keys,#R/W key pages)
+    pair<int, int> downward_update(bool alter_invalid);     // downward remove updated tags and return (#updated keys,#R/W key pages)
     bool update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
 // misc
@@ -91,6 +92,7 @@ public:
     map<int, pair<int, int>> Request_table;   // Request Id: (first LBA, Request size)
     map<int, int> LBA_2_Request;    // LBA id - Request id
     map<int, int> size_table;   // level id - size of one key in this level
+    map<int, vector<pair<int, int>>> candidate_request;     // candidate chunk of requests for sanitize
 
     Tree_Req(int max_lba, int kpp, int l, int rpk) : 
         Tree(max_lba, kpp, l),
@@ -108,6 +110,9 @@ public:
     pair<int, int> cmd_gen(Mode md, int size);    // based on md, return a chunk of key id that need to be updated into invalid
     pair<int, int> sanitize(pair<int, int> data, Mode md);
     void upward_update(int lv);
+// misc
+    void analyzer();
+    int acculumator(int start, int end);    // accumulcate data size from Req[start] to Req[end]
 };
 
 // ======================================================================

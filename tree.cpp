@@ -16,7 +16,7 @@
 // output overload
 ostream& operator << (ostream &out, const Key &i)
 {
-    std::cout << "(" << i.begin << "," << i.end << ")" << "- " << i.level << "|" << i.st << "|" << i.page_id;
+    out << "(" << i.begin << "," << i.end << ")" << "- " << i.level << "|" << i.st << "|" << i.page_id;
     return out;
 }
 
@@ -162,7 +162,7 @@ pair<int, int> Tree::sanitize(pair<int, int> data)
     // sanitize data and send report to ofs
     mark_data(data);
     upward_update(MLI);
-    pair<int, int> keynum_pagenum = downward_update();
+    pair<int, int> keynum_pagenum = downward_update(false);
     return keynum_pagenum;
 }
 // sanitize subfunction
@@ -217,9 +217,10 @@ void Tree::upward_update(int lv)
     if(modification) upward_update(lv - 1);
     return;
 }
-pair<int, int> Tree::downward_update()
+pair<int, int> Tree::downward_update(bool alter_invalid)
 {
     // record #updated keys and #updated key pages. alter updated keys to valid keys
+    // if alter_invalid id true, then also alter invalid to valid
     int total_updated_keys = 0;
     set<int> page_collector;
     for(auto i: tree) {
@@ -227,6 +228,9 @@ pair<int, int> Tree::downward_update()
             if(key.st == Status::updated) {
                 page_collector.insert(key.page_id);
                 total_updated_keys ++;
+                update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
+            }
+            else if(key.st == Status::updated && alter_invalid) {
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
             }
         }
@@ -426,32 +430,53 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
             }
         }
     }
-    else if(md == Mode::by_req){
-        // gen cmd based on request
-        // rand a Request id
-        // add up size till targeted size
-        // if failed, pick another Request id
-        int req_begin = -1, req_end, cur_size = 0;
-        while(req_begin == -1) {
-            // an iteration to gen cmd
-            req_begin = rand_gen(0, Request_table.size()-1); // pick a request as starting point 
-            cur_size = Request_table[req_begin].second;  
-            int checker = range_checker(cur_size, size);          
-            if(checker == 1) {
-                // find the perfect size, return result
-                return make_pair(req_begin, req_begin);
-            }
-            else if(checker == 2) {
-                // size too big, change another request to begin
-                continue;
-            }
-            else {
-                // add up
-            }
-        }
+    // else if(md == Mode::by_req){
+    //     // gen cmd based on request
+    //     // rand a Request id
+    //     // add up size till targeted size
+    //     // if failed, pick another Request id
+    //     int req_begin = -1, req_end, cur_size = 0;
+    //     // TEMP ------------------------------------------------------------------- UNUSE
+    //     while(req_begin == -1) {
+    //         // an iteration to gen cmd
+    //         req_begin = rand_gen(0, Request_table.size()-1); // pick a request as starting point 
+    //         req_end = req_begin;
+    //         cur_size = Request_table[req_begin].second;  
+    //         int checker = range_checker(cur_size, size);    // 0 = smaller than size; 1 = perfect fit; 2 = oversize         
+    //         if(checker == 1) {
+    //             // find a perfect request, return result
+    //             return make_pair(req_begin, req_begin);
+    //         }
+    //         else if(checker == 2) {
+    //             // size too big, change another request to begin
+    //             req_begin = -1;
+    //             continue;
+    //         }
+    //         else {
+    //             // add up
+    //             while( cur_size < size && req_end < (Request_table.size()-1) ) {
+    //                 req_end ++;
+    //                 if(req_end >= Request_table.size()) {
+    //                     req_begin = -1;
+    //                     break;  // invalid req id
+    //                 }
+    //                 else cur_size += Request_table[req_end].second;
 
-        // return Request id
-    }
+    //                 // check if end
+    //                 int checker = range_checker(cur_size, size);
+    //                 if(checker == 1) return make_pair(req_begin, req_end);  // current chunk is perfect
+    //                 else if(checker == 2) {
+    //                     // too big. pick another start Request id
+    //                     req_begin = -1;
+    //                     break;
+    //                 }
+    //                 // else keep add up
+    //             }
+    //         }
+    //     }
+
+    //     // return Request id
+    // }
     return make_pair(0,0);
 }
 pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
@@ -471,7 +496,7 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     // sanitize data and send report to ofs
     mark_data(target);
     upward_update(MLI);
-    pair<int, int> keynum_pagenum = downward_update();
+    pair<int, int> keynum_pagenum = downward_update(md == Mode::by_req);
     return keynum_pagenum;
 }
 void Tree_Req::upward_update(int lv)
@@ -529,10 +554,10 @@ void Tree::traverse()
             continue;
         cout << "level: " << i.first << endl;
         // skip last level
-        // if(i.first == L - 1) {
-        //     cout << "skip\n";
-        //     break;
-        // }
+        if(i.first == L - 1) {
+            cout << "skip\n";
+            break;
+        }
         // print each key
         for(auto j: i.second)
             cout << j << endl;
@@ -567,4 +592,26 @@ int range_checker(int x, int target)
     if( log_x <= low ) return 0;
     else if(log_x >= high) return 2;
     else return 1;
+}
+
+// testing
+void Tree_Req::analyzer()
+{
+    int n = Request_table.size() - 1;
+    for(int i = 0; i <= n; i ++) {
+        for(int j = i; j <= n; j ++) {
+            int sum = acculumator(i, j);
+            candidate_request[ log(sum)/log(2) ].push_back(make_pair(i, j));
+        }
+    }
+}
+int Tree_Req::acculumator(int start, int end)
+{
+    int sum = 0;
+    if(start == end) sum = Request_table[start].second;
+    else {
+        for(int i = start; i <= end; i ++)
+            sum += Request_table[i].second;
+    }
+    return sum;
 }
