@@ -204,9 +204,9 @@ int main(int argc, char * argv[])
             if(R_id == -1) break;
             zns.write_data(R_id);
         }
-        
         pair<int, int> data = make_pair(2, 16);     // LBA 2-16
         pair<int, int> result = zns.sanitize(data);
+        
         cout << result.first << ", " << result.second << endl;
         
     }

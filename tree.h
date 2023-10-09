@@ -72,7 +72,7 @@ public:
 // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
     pair<int, int> downward_update();     // downward remove updated tags and return (#updated keys,#R/W key pages)
-    void update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
+    bool update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
 // misc
     void traverse();    // traverse this tree and print out keys

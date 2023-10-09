@@ -239,12 +239,13 @@ pair<int, int> Tree::downward_update()
 
     return make_pair(total_updated_keys, page_collector.size());
 }
-void Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
+bool Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
 {
     auto it = tree[lv].find(Key(data.first, data.second, lv));
-    if(it == tree[lv].end()) return;
+    if(it == tree[lv].end()) return false;
     tree[lv].erase(it);
     tree[lv].insert(Key(data.first, data.second, lv, new_status, it->page_id));
+    return true;
 }
 
 
@@ -443,14 +444,14 @@ void Tree_Req::upward_update(int lv)
             // mark parent status based on result
             if(record[Status::invalid] == chunk_size) {
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                update_key_status(key, lv - 1, Status::invalid);
-                modification = true;
+                if(update_key_status(key, lv - 1, Status::invalid) == true)
+                    modification = true;
             }
             else if(record[Status::valid] != chunk_size) {
                 // should update
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                update_key_status(key, lv - 1, Status::updated);
-                modification = true;
+                if( update_key_status(key, lv - 1, Status::updated) == true)
+                    modification = true;
             }
         }
         // ignore remaining keys. these keys dont have direct parent. just set device key as updated
