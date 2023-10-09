@@ -106,7 +106,7 @@ public:
     void create_size_table();   // create size table by definition of tree; key manager need this info
 // sanitize
     pair<int, int> cmd_gen(Mode md, int size);    // based on md, return a chunk of key id that need to be updated into invalid
-    pair<int, int> sanitize(pair<int, int> data);
+    pair<int, int> sanitize(pair<int, int> data, Mode md);
     void upward_update(int lv);
 };
 
@@ -114,3 +114,4 @@ public:
 // =============                   Misc                      ============
 // ======================================================================
 int rand_gen(int min, int max); // pure rand_gen of range [min, max]
+bool range_checker(int x, int target);  // check if log2(target)-1 < log2(x) < log2(target)+1

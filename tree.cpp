@@ -247,7 +247,32 @@ bool Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
     tree[lv].insert(Key(data.first, data.second, lv, new_status, it->page_id));
     return true;
 }
-
+pair<int, int> Tree::cmd_gen(Mode md, int size)
+{
+    if(md == Mode::by_rand) {
+        int a, b = -1;
+        while(b == -1) {
+            a = rand_gen(0, Maxlba);   // gen a valid data id
+            if( (a + size - 1) <= Maxlba) {
+                b = a + size - 1;
+                return make_pair(a, b);
+            }
+        }
+    }
+    else {
+        // generate a lba of the beginning of a key
+        int a, b = -1;
+        while(b == -1) {
+            a = KPP * rand_gen(0, Maxlba / KPP);
+            if(a + size - 1 <= Maxlba) {
+                b = a + size - 1;
+                return make_pair(a, b);
+            }
+        }
+    }
+    cout << "rand_gen fail\n";
+    return make_pair(0, 0);
+}
 
 
 // ======================================================================
@@ -397,20 +422,41 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
             a = rand_gen(0, Maxlba);   // gen a valid data id
             if( (a + size - 1) <= Maxlba) {
                 b = a + size - 1;
-                return make_pair(a, b);
+                return make_pair(a, b);     // return LBA id
             }
         }
     }
-    else {
-        return make_pair(0,0);
+    else if(md == Mode::by_req){
+        // gen cmd based on request
+        // rand a Request id
+        // add up size till targeted size
+        // if failed, pick another Request id
+        int req_begin = -1, req_end, cur_size = 0;
+        while(req_begin == -1) {
+            // an iteration to gen cmd
+            req_begin = rand_gen(0, Request_table.size()-1); // pick a request as starting point 
+            cur_size = Request_table[req_begin].second;           
+            while(cur_size < size) {
+
+            }
+        }
+
+        // return Request id
     }
     return make_pair(0,0);
 }
-pair<int, int> Tree_Req::sanitize(pair<int, int> data)
+pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
 {
-    // perform key conversion
-    // lba -> actual key id
-    pair<int, int> target = make_pair(LBA_2_Request[data.first], LBA_2_Request[data.second]);
+    pair<int, int> target;
+    if(md == Mode::by_rand) {
+        // perform key conversion
+        // lba -> actual key id
+        target = make_pair(LBA_2_Request[data.first], LBA_2_Request[data.second]);
+    }
+    else {
+        // data is Request id, which is the key id
+        target = data;
+    }
 
     // call original sanitize
     // sanitize data and send report to ofs
@@ -491,33 +537,6 @@ void Tree::print_member()
     << Maxlba << " " << KPP << " "
     << L << " " << MLI << endl;
 }
-
-pair<int, int> Tree::cmd_gen(Mode md, int size)
-{
-    if(md == Mode::by_rand) {
-        int a, b = -1;
-        while(b == -1) {
-            a = rand_gen(0, Maxlba);   // gen a valid data id
-            if( (a + size - 1) <= Maxlba) {
-                b = a + size - 1;
-                return make_pair(a, b);
-            }
-        }
-    }
-    else {
-        // generate a lba of the beginning of a key
-        int a, b = -1;
-        while(b == -1) {
-            a = KPP * rand_gen(0, Maxlba / KPP);
-            if(a + size - 1 <= Maxlba) {
-                b = a + size - 1;
-                return make_pair(a, b);
-            }
-        }
-    }
-    cout << "rand_gen fail\n";
-    return make_pair(0, 0);
-}
 int rand_gen(int min, int max)
 {
 // uniform distribution
@@ -527,4 +546,12 @@ int rand_gen(int min, int max)
     return abs(distrib(gen));
 // normal distribution
     
+}
+bool range_checker(int x, int target)
+{
+    // check if log2(target)-1 < log2(x) < log2(target)+1
+    float low = (log(target) / log(2)) - 1;
+    float high = (log(target) / log(2)) + 1;
+    float log_x = log(x) / log(2);
+    return ( log_x > low ) && ( log_x < high);
 }
