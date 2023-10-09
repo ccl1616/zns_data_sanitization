@@ -194,64 +194,68 @@ int main(int argc, char * argv[])
     }   // end of SNIA Mode
 
     // Request Mode ./main -r -q <exp> <KPP> <RPK> <cmd>
+    // *************** WARNING: segmentation fault possible
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
         // input file
         ifstream ifs;
         ifs.open("s17_01_all.txt");
 
-        // write to full
-        int counter = 0;    // count write KP
-        int min = INT16_MAX, max = -1;
-        Tree_Req zns(Maxlba, KPP, L, RPK);
-        while(zns.write_pointer <= Maxlba && !ifs.eof()) {
-            // get SNIA size
-            string s;
-            int w_size;
-            ifs >> s;
-            if(s != "") {
-                w_size = stoi(s);
-                // write
-                int R_id = zns.add_request(w_size);
-                if(R_id == -1) break;
-                counter += zns.write_data(R_id);
+        map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
+        map<int, int> record_key_num;   // (size, sum #updated keys)
+        map<int, int> record_page_num;   // (size, sum #R/W pages)
 
-                if(w_size > max) max = w_size;
-                if(w_size < min) min = w_size;
+        for(int i = 0; i < cmd_per_group; i ++) {
+            // write to full
+            int counter = 0;    // count write KP
+            Tree_Req zns(Maxlba, KPP, L, RPK);
+            while(zns.write_pointer <= Maxlba && !ifs.eof()) {
+                // get SNIA size
+                string s;
+                int w_size;
+                ifs >> s;
+                if(s != "") {
+                    w_size = stoi(s);
+                    // write
+                    int R_id = zns.add_request(w_size);
+                    if(R_id == -1) break;
+                    counter += zns.write_data(R_id);
+                }
+                // check ifs
+                if(ifs.eof()) {
+                    ifs.clear();
+                    ifs.seekg(0);   // use this to get back to beginning of file
+                    ofs << "hit file end\n";
+                }
             }
-            // check ifs
-            if(ifs.eof()) {
-                ifs.clear();
-                ifs.seekg(0);   // use this to get back to beginning of file
-                ofs << "hit file end\n";
+            zns.analyzer();
+            
+            // map<int, pair<int, int>> Record;
+            for(auto e: zns.candidate_request) {
+                if(e.first == 21) break;
+                //choose a random one from this vector
+                pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
+                pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+
+                // cout << "2^" << e.first << " ";
+                // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+                // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
+                record_key_num[e.first] += keynum_pagenum.first;
+                record_page_num[e.first] += keynum_pagenum.second;
+                num[e.first] ++;
             }
         }
-        zns.analyzer();
-        
-        map<int, pair<int, int>> Record;
-        for(auto e: zns.candidate_request) {
-            //choose a random one from this vector
-            pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
-            pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+        cout << "zns done\n";
 
-            // cout << "2^" << e.first << " ";
-            // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
-            Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
-        }
-        // print record
         ofs << "size #key #page\n";
-        for(auto i: Record) {
-            ofs << "2^" << i.first << " " << i.second.first << " " << i.second.second << endl;
+        for(auto k: num) {
+            int size = k.first;
+            int n = k.second;
+            float mean_key = record_key_num[size] / n;
+            float mean_page = record_page_num[size] / n;
+            ofs << "2^" << size << " ";
+            ofs << mean_key << " " << mean_page << endl;
         }
-        /*
-        zns
-            analyzer
-            from size k to 2^21
-                cmd_gen(size)
-                sanitize
-                save record
-
-        */
         
     }
 
