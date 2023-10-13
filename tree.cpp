@@ -512,7 +512,9 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     // call original sanitize
     // sanitize data and send report to ofs
     mark_data(target);
+    cout << "mark_data done\n";
     upward_update(MLI);
+    cout << "upward_update done\n";
     pair<int, int> keynum_pagenum = downward_update(md == Mode::by_req);
     return keynum_pagenum;
 }
@@ -520,6 +522,7 @@ void Tree_Req::upward_update(int lv)
 {
     if(lv == 0) {
         Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        cout << "mark device key\n";
         return;
     }
 // algorithm. bottom-up
@@ -543,18 +546,26 @@ void Tree_Req::upward_update(int lv)
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
                 if(update_key_status(key, lv - 1, Status::invalid) == true)
                     modification = true;
+                cout << "mark as invalid\n";
             }
             else if(record[Status::valid] != chunk_size) {
                 // should update
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
                 if( update_key_status(key, lv - 1, Status::updated) == true)
                     modification = true;
+                cout << "mark as updated\n";
             }
         }
         // ignore remaining keys. these keys dont have direct parent. just set device key as updated
-        if(rem != 0)
-            Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
-
+        // if(rem != 0)
+        //     Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        if(rem != 0) {
+            while(it != tree[lv].end()) {
+                if(it->st == Status::updated)
+                    modification = true;    // need to mark device key as invalid
+                it ++;
+            }
+        }
         if(modification) upward_update(lv - 1);
         return;
     }

@@ -251,8 +251,8 @@ int main(int argc, char * argv[])
         for(auto k: num) {
             int size = k.first;
             int n = k.second;
-            float mean_key = record_key_num[size] / n;
-            float mean_page = record_page_num[size] / n;
+            float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
+            float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
             ofs << "2^" << size << " ";
             ofs << mean_key << " " << mean_page << endl;
         }

@@ -94,7 +94,7 @@ public:
     map<int, pair<int, int>> Request_table;   // Request Id: (first LBA, Request size)
     map<int, int> LBA_2_Request;    // LBA id - Request id
     map<int, int> size_table;   // level id - size of one key in this level
-    map<int, vector<pair<int, int>>> candidate_request;     // candidate chunk of requests for sanitize
+    map<int, vector<pair<int, int>>> candidate_request;     // candidate chunk of requests for sanitize; log(size)-(R id start, R id end)
 
     Tree_Req(int max_lba, int kpp, int l, int rpk) : 
         Tree(max_lba, kpp, l),
