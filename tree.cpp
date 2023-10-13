@@ -277,7 +277,24 @@ pair<int, int> Tree::cmd_gen(Mode md, int size)
     cout << "rand_gen fail\n";
     return make_pair(0, 0);
 }
-
+int Tree::data_page_calculator() 
+{
+    set<int> s;
+    for(auto i: tree[MLI]) {
+        s.insert(i.page_id);
+    }
+    return s.size();
+}
+int Tree::key_page_calculator() 
+{
+    set<int> s;
+    for(auto l: tree) {
+        if(l.first == MLI) break;
+        for(auto k: l.second)
+            s.insert(k.page_id);
+    }
+    return s.size();
+}
 
 // ======================================================================
 // ======================================================================

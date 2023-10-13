@@ -79,6 +79,8 @@ public:
     void traverse();    // traverse this tree and print out keys
     void print_member();
     pair<int, int> cmd_gen(Mode md, int size);
+    int data_page_calculator();   // return # pages that the data occupied
+    int key_page_calculator();
 };
 
 // ======================================================================

@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
     // ...
 
 // Different Modes
-    // Key Mode
+    // Key Mode ./main -k -r/-k <exp> <KPP> <cmd> <outFile>
     if(vec[0] == "-k") {
         cout << "Key Mode\n";
         // pure key sanitization
@@ -116,7 +116,7 @@ int main(int argc, char * argv[])
         }
     }   // end of Key Mode
 
-    // SNIA Mode ./main -s -r <exp> <KPP> <cmd>
+    // SNIA Mode ./main -s -r/-k <exp> <KPP> <cmd> <outFile>
     else if(vec[0] == "-s") {
         cout << "SNIA Mode\n";
         // input file
@@ -193,7 +193,7 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
-    // Request Mode ./main -r -q <exp> <KPP> <RPK> <cmd>
+    // Request Mode ./main -r -q <exp> <KPP> <RPK> <cmd> <outFile>
     // *************** WARNING: segmentation fault possible
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
@@ -202,8 +202,8 @@ int main(int argc, char * argv[])
         ifs.open("s17_01_all.txt");
 
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
-        map<int, int> record_key_num;   // (size, sum #updated keys)
-        map<int, int> record_page_num;   // (size, sum #R/W pages)
+        map<int, float> record_key_num;   // (size, sum #updated keys)
+        map<int, float> record_page_num;   // (size, sum #R/W pages)
 
         for(int i = 0; i < cmd_per_group; i ++) {
             // write to full
@@ -259,6 +259,65 @@ int main(int argc, char * argv[])
         
     }
 
+    // SNIA write ./main -sw -r <exp> <KPP> <cmd> <outFile>
+    // draw write key pages-data key pages bar chart
+    else if(vec[0] == "-sw") {
+        cout << "SNIA write\n";
+        // input file
+        ifstream ifs;
+        ifs.open("s17_01_all.txt");
+        // calculate avg zone stats
+        float key_page_sum = 0, lba_page_sum = 0;
+        int zns_num = 0;
+        map<int, vector<double>> Record;    // id, <avg key pages, avg lba_pages>
+        
+        while(!ifs.eof()) {
+            // write a zone to full
+            Tree zns(Maxlba, KPP, L);
+            while(zns.write_pointer <= Maxlba && !ifs.eof()) {
+                // get SNIA size
+                string s;
+                int w_size;
+                ifs >> s;
+                if(s != "") {
+                    w_size = stoi(s);
+                    // write
+                    zns.write_data(w_size);
+                }
+            }
+            if(zns.write_pointer < Maxlba && ifs.eof()) break;  // last zone cannot be write to full
+            
+            // the zone is full now
+            // record zone stats
+            key_page_sum = zns.key_page_calculator();
+            int lba_counter = zns.data_page_calculator();
+            lba_page_sum += lba_counter;
+            zns_num ++;
+            cout << zns_num << ": " << key_page_sum << ", " << lba_counter << endl;
+
+            // if meet group num, record
+            if(zns_num >= cmd_per_group && zns_num % cmd_per_group == 0) {
+                // record
+                double key_page_mean = key_page_sum / cmd_per_group;
+                double lba_page_mean = lba_page_sum / cmd_per_group;
+                // Record[zns_num / cmd_per_group] = make_pair(key_page_mean, lba_page_mean);
+                cout << key_page_mean << " " << lba_page_mean << endl;
+                Record[zns_num / cmd_per_group].push_back(key_page_mean);
+                Record[zns_num / cmd_per_group].push_back(lba_page_mean);
+                // update counters
+                key_page_sum = 0, lba_page_sum = 0;
+            }
+            if(zns_num >= 100) break;   // total zone num
+        }
+        // output
+        ofs << "ID KP DP\n";
+        for(auto i: Record) {
+            ofs << i.first << " ";
+            for(auto j: i.second)
+                ofs << j << " ";
+            ofs << endl;
+        }
+    }
     else cout << "wrong input mode" << endl;
     // close output file
     ofs.close();
