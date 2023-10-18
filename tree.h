@@ -9,7 +9,7 @@ using namespace std;
 // =============                   Key                      =============
 // ======================================================================
 enum Status {valid, updated, invalid};
-enum Mode {by_rand, by_key, by_req, by_partial_req};
+enum Mode {by_rand, by_key, by_req, by_partial_req, by_stack};
 class Key
 {
 public:

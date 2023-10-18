@@ -39,15 +39,23 @@ int main(int argc, char * argv[])
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
     Mode md;
     if(vec[0] == "-r") {
-        // -r -r <exp> <KPP> <RPK> <cmd>
-        exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
+        // request exp
         // mode
         if(vec[1] == "-r") md = Mode::by_rand;
         else if(vec[1] == "-q") md = Mode::by_req;
         else if(vec[1] == "-p") md = Mode::by_partial_req;
+
+        // -r -r <exp> <KPP> <RPK> <cmd>
+        exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
     }
     else {
-        md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
+        // md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
+        // key exp, SNIA exp
+        // mode: key, rand, stack
+        if(vec[1] == "-k") md = Mode::by_key;
+        else if(vec[1] == "-r") md = Mode::by_rand;
+        else md = Mode::by_stack;
+
         exp = stoi(vec[2]), KPP = stoi(vec[3]), cmd_per_group = stoi(vec[4]);
     }
     // calculate system spec
