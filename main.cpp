@@ -197,6 +197,10 @@ int main(int argc, char * argv[])
     // *************** WARNING: segmentation fault possible
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
+        if(argc < 8) {
+            cout << "wrong input\n";
+            return 0;
+        }
         // input file
         ifstream ifs;
         ifs.open("s17_01_all.txt");

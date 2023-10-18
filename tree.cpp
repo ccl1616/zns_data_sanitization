@@ -512,15 +512,17 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     // call original sanitize
     // sanitize data and send report to ofs
     mark_data(target);
-    cout << "mark_data done\n";
+    cout << "1. mark_data done\n";
     upward_update(MLI);
-    cout << "upward_update done\n";
+    cout << "2. upward_update done\n";
     pair<int, int> keynum_pagenum = downward_update(md == Mode::by_req);
+    cout << "3. downward_update done\n";
     return keynum_pagenum;
 }
 void Tree_Req::upward_update(int lv)
 {
-    if(lv == 0) {
+    if(lv < 0) return;
+    else if(lv == 0) {
         Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
         cout << "mark device key\n";
         return;
@@ -559,13 +561,13 @@ void Tree_Req::upward_update(int lv)
         // ignore remaining keys. these keys dont have direct parent. just set device key as updated
         // if(rem != 0)
         //     Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
-        if(rem != 0) {
-            while(it != tree[lv].end()) {
-                if(it->st == Status::updated)
-                    modification = true;    // need to mark device key as invalid
-                it ++;
-            }
-        }
+        // if(rem != 0) {
+        //     while(it != tree[lv].end()) {
+        //         if(it->st == Status::updated)
+        //             modification = true;    // need to mark device key as invalid
+        //         it ++;
+        //     }
+        // }
         if(modification) upward_update(lv - 1);
         return;
     }
