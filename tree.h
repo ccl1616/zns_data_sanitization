@@ -10,6 +10,7 @@ using namespace std;
 // ======================================================================
 enum Status {valid, updated, invalid};
 enum Mode {by_rand, by_key, by_req, by_partial_req, by_stack};
+//         -r       -k      -q      (-pq)           -t
 class Key
 {
 public:
@@ -70,8 +71,9 @@ public:
 // sanitize
     void mark_data(pair<int, int> data); // mark data chunk as invalid
     pair<int, int> sanitize(pair<int, int> data);    // given target data, return updated keynum, pagenum
-// sanitize subfunction
+    // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
+    void upward_update_targeted(set<Key> target);    // update targeted key's parents only
     pair<int, int> downward_update(bool alter_invalid);     // downward remove updated tags and return (#updated keys,#R/W key pages)
     bool update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
@@ -81,6 +83,7 @@ public:
     pair<int, int> cmd_gen(Mode md, int size);
     int data_page_calculator();   // return # pages that the data occupied
     int key_page_calculator();
+    Key return_parent_key_info(Key k);  // calculate parent of key k
 };
 
 // ======================================================================

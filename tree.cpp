@@ -217,6 +217,12 @@ void Tree::upward_update(int lv)
     if(modification) upward_update(lv - 1);
     return;
 }
+
+void Tree::upward_update_targeted(set<Key> target)
+{
+
+}
+
 pair<int, int> Tree::downward_update(bool alter_invalid)
 {
     // record #updated keys and #updated key pages. alter updated keys to valid keys
@@ -294,6 +300,19 @@ int Tree::key_page_calculator()
             s.insert(k.page_id);
     }
     return s.size();
+}
+Key Tree::return_parent_key_info(Key k)
+{
+    if(k.level - 1 != 0) {
+        int size_parent = pow(KPP, MLI - (k.level - 1));
+        int par_begin = k.begin / size_parent;  // take int
+        par_begin = par_begin * size_parent;
+        return Key(par_begin, par_begin + size_parent - 1, k.level - 1);
+    }
+    else{
+        // parent is device key
+        return Key(0, Maxlba, 0);
+    }
 }
 
 // ======================================================================
