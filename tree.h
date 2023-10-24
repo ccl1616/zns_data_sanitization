@@ -75,7 +75,7 @@ public:
     // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
     void upward_update_targeted(set<Key> target, set<Key> &updated);    // update targeted key's parents only
-    pair<int, int> downward_update(bool alter_invalid);     // downward remove updated tags and return (#updated keys,#R/W key pages)
+    pair<int, int> downward_update(bool all_to_valid);     // downward remove updated tags and return (#updated keys,#R/W key pages)
     bool update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
 // misc

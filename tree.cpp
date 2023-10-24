@@ -317,18 +317,10 @@ void Tree::upward_update_targeted(set<Key> target, set<Key> &updated)
     else return;
 }
 
-pair<int, int> Tree::downward_update(bool alter_invalid)
+pair<int, int> Tree::downward_update(bool all_to_valid)
 {
-    // debug; check device key status
-    auto it = tree[0].find(Key(0, Maxlba, 0));
-    if(it != tree[0].end()) {
-        if(it->st == Status::updated) cout << "device key updated\n";
-        else cout << "device key status unknown\n";
-    }
-    else cout << "no device key" << endl;
-
     // record #updated keys and #updated key pages. alter updated keys to valid keys
-    // if alter_invalid id true, then also alter invalid to valid
+    // all_to_valid: also change invalid to valid. no need for count keys because this is design for refreshing the zone
     int total_updated_keys = 0;
     set<int> page_collector;
     for(auto i: tree) {
@@ -338,7 +330,7 @@ pair<int, int> Tree::downward_update(bool alter_invalid)
                 total_updated_keys ++;
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
             }
-            else if(key.st == Status::invalid && alter_invalid) {
+            if(all_to_valid && key.st == Status::invalid) {
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
             }
         }
@@ -627,38 +619,40 @@ void Tree_Req::upward_update(int lv)
         }
 
         // check each chunk of keys and decide their parent status
-        auto it = tree[lv].begin();
+        
         // check chunks
+        int key_begin = 0;
         for(int i = 0; i < quo; i ++) {
             vector<int> record(3, 0);   // record number for key status
             for(int j = 0; j < chunk_size; j ++) {
-                record[it->st] ++;
-                it ++;
+                int key_end = key_begin + size_table[lv] - 1;
+                auto it = tree[lv].find(Key(key_begin, key_end, lv));
+                if(it == tree[lv].end()) break;
+                else {
+                    record[it->st] ++;
+                    key_begin += size_table[lv];
+                }
             }
             
             // mark parent status based on result
             if(record[Status::invalid] == chunk_size) {
-                pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                if(update_key_status(key, lv - 1, Status::invalid) == true)
+                // mark parent as invalid
+                Key par = return_parent_key_info(Key(key_begin - size_table[lv], key_begin - 1, lv));
+                // pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
+                if(update_key_status(make_pair(par.begin, par.end), par.level, Status::invalid) == true)
                     modification = true;
+                else update_key_status(make_pair(0, Maxlba), 0, Status::updated);
             }
             else if(record[Status::valid] != chunk_size) {
-                // should update
-                pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                if( update_key_status(key, lv - 1, Status::updated) == true)
+                // mark parentas updated 
+                Key par = return_parent_key_info(Key(key_begin - size_table[lv], key_begin - 1, lv));
+                // pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
+                if( update_key_status(make_pair(par.begin, par.end), par.level, Status::updated) == true)
                     modification = true;
+                else update_key_status(make_pair(0, Maxlba), 0, Status::updated);
             }
         }
-        // ignore remaining keys. these keys dont have direct parent. just set device key as updated
-        // if(rem != 0)
-        //     Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
-        // if(rem != 0) {
-        //     while(it != tree[lv].end()) {
-        //         if(it->st == Status::updated)
-        //             modification = true;    // need to mark device key as invalid
-        //         it ++;
-        //     }
-        // }
+        
         if(modification) upward_update(lv - 1);
         return;
     }
@@ -668,6 +662,7 @@ Key Tree_Req::return_parent_key_info(Key k)
 {
     if(k.level - 1 != 0) {
         int size_parent = size_table[k.level - 1];
+        if(size_parent == 0) cout << "Floating point exception here, " << k.begin << " " << k.end << " " << k.level << endl;
         int par_begin = k.begin / size_parent;  // take int
         par_begin = par_begin * size_parent;
         return Key(par_begin, par_begin + size_parent - 1, k.level - 1);
