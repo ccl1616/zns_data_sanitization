@@ -70,10 +70,11 @@ public:
 
 // sanitize
     void mark_data(pair<int, int> data); // mark data chunk as invalid
-    pair<int, int> sanitize(pair<int, int> data);    // given target data, return updated keynum, pagenum
+    set<Key> mark_data_stack(pair<int, int> data);
+    pair<int, int> sanitize(pair<int, int> data, bool is_stack);    // given target data, return updated keynum, pagenum
     // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
-    void upward_update_targeted(set<Key> target);    // update targeted key's parents only
+    void upward_update_targeted(set<Key> target, set<Key> &updated);    // update targeted key's parents only
     pair<int, int> downward_update(bool alter_invalid);     // downward remove updated tags and return (#updated keys,#R/W key pages)
     bool update_key_status(pair<int, int> data, int lv, Status new_status);     // update(rm and add) key in this tree
 
@@ -83,6 +84,7 @@ public:
     pair<int, int> cmd_gen(Mode md, int size);
     int data_page_calculator();   // return # pages that the data occupied
     int key_page_calculator();
+    int key_page_calculator_given_set(set<Key> S);    // given set S, count #key pages in S
     Key return_parent_key_info(Key k);  // calculate parent of key k
 };
 
@@ -118,6 +120,7 @@ public:
 // misc
     void analyzer();
     int acculumator(int start, int end);    // accumulcate data size from Req[start] to Req[end]
+    Key return_parent_key_info(Key k);
 };
 
 // ======================================================================

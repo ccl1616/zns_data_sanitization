@@ -21,8 +21,16 @@ ostream& operator << (ostream &out, const Key &i)
 }
 
 // ======================================================================
-// =============                   Tree                      ============
 // ======================================================================
+// ======================================================================
+// ======================================================================
+// ======================================================================
+// =============                 Tree                        ============
+// ======================================================================
+// ======================================================================
+// ======================================================================
+// ======================================================================
+
 // write ================================================================
 int Tree::write_data(int size)
 {
@@ -157,14 +165,54 @@ void Tree::mark_data(pair<int, int> data)
         update_key_status(make_pair(i, i), MLI, Status::invalid);
     }
 }
-pair<int, int> Tree::sanitize(pair<int, int> data)
+set<Key> Tree::mark_data_stack(pair<int, int> data)
+{
+    set<Key> upd;   // collect data that turns to invalid from valid
+    for(int i = data.first; i <= data.second; i ++) {
+        auto it = tree[MLI].find(Key(i, i, MLI));
+        if(it == tree[MLI].end()) {
+            continue;
+        }
+        else if(it->st == Status::invalid) {
+            continue;
+        }
+        else {
+            //this data is currently valid
+            update_key_status(make_pair(i, i), MLI, Status::invalid);   // turns this data into invalid
+            upd.insert(Key(i, i, MLI));
+        }
+    }
+    // cout << "mark data: ";
+    // for(auto i: upd)
+    //     cout << i.begin << " ";
+    // cout << endl;
+    return upd;
+}
+pair<int, int> Tree::sanitize(pair<int, int> data, bool is_stack)
 {
     // sanitize data and send report to ofs
-    mark_data(data);
-    upward_update(MLI);
-    pair<int, int> keynum_pagenum = downward_update(false);
-    return keynum_pagenum;
+    if(!is_stack) {
+        mark_data(data);
+        upward_update(MLI);
+        pair<int, int> keynum_pagenum = downward_update(false);
+        return keynum_pagenum;
+    }
+    else {
+    // stack sanitize
+        set<Key> marked_data = mark_data_stack(data);
+        set<Key> updated_keys;  // save result updated keys in this iteration
+        upward_update_targeted(marked_data, updated_keys);
+        // remove invalid keys fro updated_keys set
+        set<Key> updated_keys_wo_invalid;
+        for(auto i: updated_keys) {
+            if(i.st == Status::updated)
+                updated_keys_wo_invalid.insert(i);
+        }
+        pair<int, int> keynum_pagenum = make_pair(updated_keys_wo_invalid.size(), key_page_calculator_given_set(updated_keys_wo_invalid));
+        return keynum_pagenum;
+    }
 }
+    
 // sanitize subfunction
 void Tree::upward_update(int lv)
 {
@@ -218,13 +266,67 @@ void Tree::upward_update(int lv)
     return;
 }
 
-void Tree::upward_update_targeted(set<Key> target)
+void Tree::upward_update_targeted(set<Key> target, set<Key> &updated)
 {
+    // only update target's parent if an update is needed
+    // collect updated keys
+    set<Key> upd;
+    for(auto k: target){
+        Key par = return_parent_key_info(k);
+        set<Key>::iterator it = tree[par.level].find(par);
+        if(it != tree[par.level].end()) {
+            if(it->st != Status::invalid) {
+                // check k's peers
+                vector<int> record(3, 0);   // record number for subkeys status
+                int size = pow(KPP, MLI - k.level);
+                for(int i = par.begin; i < par.begin + size * KPP; i += size) {
+                    set<Key>::iterator it = tree[k.level].find(Key(i, i + size - 1, k.level));
+                    if(it == tree[k.level].end()) {
+                        cout << "cant find in level " << k.level  << ": " << i << " " << i + size - 1 << endl;
+                        break;
+                    }
+                    record[it->st] ++;
+                }
+                // update parent based on result
+                if(record[Status::invalid] == KPP) {
+                    update_key_status(make_pair(par.begin, par.end), par.level, Status::invalid);
+                    auto it = tree[par.level].find(Key(par.begin, par.end, par.level));
+                    upd.insert(*it);
+                }
+                else {
+                    update_key_status(make_pair(par.begin, par.end), par.level, Status::updated);
+                    auto it = tree[par.level].find(Key(par.begin, par.end, par.level));
+                    upd.insert(*it);
+                }
+            }
+        }
+    }
+    // merge upd into updated set
+    for(auto k: upd) {
+        updated.insert(k);
+    }
 
+    if(upd.size() == 1) {
+        // check if this is a device key
+        set<Key>::iterator it = upd.begin();
+        if(it->level == 0) return;  // is device key, no more recursion
+        else upward_update_targeted(upd, updated);
+    }
+    else if(upd.size() > 0)
+        upward_update_targeted(upd, updated);
+    else return;
 }
 
 pair<int, int> Tree::downward_update(bool alter_invalid)
 {
+    // debug; check device key status
+    auto it = tree[0].find(Key(0, Maxlba, 0));
+    if(it != tree[0].end()) {
+        if(it->st == Status::updated) cout << "device key updated\n";
+        else cout << "device key status unknown\n";
+    }
+    else cout << "no device key" << endl;
+
     // record #updated keys and #updated key pages. alter updated keys to valid keys
     // if alter_invalid id true, then also alter invalid to valid
     int total_updated_keys = 0;
@@ -236,16 +338,16 @@ pair<int, int> Tree::downward_update(bool alter_invalid)
                 total_updated_keys ++;
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
             }
-            else if(key.st == Status::updated && alter_invalid) {
+            else if(key.st == Status::invalid && alter_invalid) {
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
             }
         }
     }
     // check each page id
-    cout << "page_collector: ";
-    for(auto i: page_collector)
-        cout << i << " ";
-    cout << endl;
+    // cout << "page_collector: ";
+    // for(auto i: page_collector)
+    //     cout << i << " ";
+    // cout << endl;
 
     return make_pair(total_updated_keys, page_collector.size());
 }
@@ -301,6 +403,14 @@ int Tree::key_page_calculator()
     }
     return s.size();
 }
+int Tree::key_page_calculator_given_set(set<Key> S)
+{
+    set<int> page;  // save page id
+    for(auto k: S) {
+        page.insert(k.page_id);
+    }
+    return page.size();
+}
 Key Tree::return_parent_key_info(Key k)
 {
     if(k.level - 1 != 0) {
@@ -325,16 +435,14 @@ Key Tree::return_parent_key_info(Key k)
 // ======================================================================
 // ======================================================================
 // ======================================================================
-
-
-
 int Tree_Req::add_request(int size)
 {
-    if(write_pointer > Maxlba) return -1;   // no more adding is allowed
+    // record request info, assign request ID, limit size if needed
+    if(write_pointer > Maxlba) return -1;   // no more adding is allowed, return R_ID == -1
     int id = Request_table.size();
     // if the size is too big to current disk, reduce write command size into available #LBA
     int read_add_size = (write_pointer + size - 1 <= Maxlba) ?size :(Maxlba - write_pointer + 1);
-    // save request info; Request_table
+    // save request info to Request_table
     Request_table[id] = make_pair(write_pointer, read_add_size);
     return id;
 }
@@ -361,6 +469,10 @@ int Tree_Req::write_data(int R_id)
 
     // call key manager to create parent key if needed
     key_manager(MLI, page_collector);
+    // create device key
+    set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+    if(it == tree[0].end())
+        page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
 
     // return # updated key pages
     {
@@ -434,12 +546,7 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
             }
         }
     }
-    // MLI-1 level key num >= 2, then create device key
-    if(tree[MLI - 1].size() >= 2) {
-        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
-        if(it == tree[0].end())
-            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
-    }
+    
     // check previous level
     key_manager(lv - 1, page_collector);
     return page_collector.size();
@@ -533,6 +640,8 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     mark_data(target);
     cout << "1. mark_data done\n";
     upward_update(MLI);
+    // update device key by hand
+        update_key_status(make_pair(0, Maxlba), 0, Status::updated);
     cout << "2. upward_update done\n";
     pair<int, int> keynum_pagenum = downward_update(md == Mode::by_req);
     cout << "3. downward_update done\n";
@@ -542,7 +651,7 @@ void Tree_Req::upward_update(int lv)
 {
     if(lv < 0) return;
     else if(lv == 0) {
-        Tree::update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        update_key_status(make_pair(0, Maxlba), 0, Status::updated);
         cout << "mark device key\n";
         return;
     }
@@ -567,14 +676,12 @@ void Tree_Req::upward_update(int lv)
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
                 if(update_key_status(key, lv - 1, Status::invalid) == true)
                     modification = true;
-                cout << "mark as invalid\n";
             }
             else if(record[Status::valid] != chunk_size) {
                 // should update
                 pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
                 if( update_key_status(key, lv - 1, Status::updated) == true)
                     modification = true;
-                cout << "mark as updated\n";
             }
         }
         // ignore remaining keys. these keys dont have direct parent. just set device key as updated
@@ -591,6 +698,12 @@ void Tree_Req::upward_update(int lv)
         return;
     }
 }
+
+Key Tree_Req::return_parent_key_info(Key k)
+{
+    
+}
+
 
 // ======================================================================
 // =============                   Misc                      ============

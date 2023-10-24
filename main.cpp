@@ -76,7 +76,15 @@ int main(int argc, char * argv[])
     ofs << "\n\n";
 
 // test code
-    // ...
+    // Tree zns(Maxlba, KPP, L);
+    // zns.write_data(Maxlba + 1);
+    // int db, de;
+    // while(1) {
+    //     cin >> db >> de;
+    //     pair<int, int> data = make_pair(db, de);
+    //     pair<int, int> keynum_pagenum = zns.sanitize(data, true);
+    //     cout << "(" << db << ", " << de << "): " << keynum_pagenum.first << " " << keynum_pagenum.second << endl;
+    // }
     // return 0;
 
 
@@ -103,7 +111,7 @@ int main(int argc, char * argv[])
                     return 1;
                 }
                 pair<int, int> data = zns.cmd_gen(md, size);
-                pair<int, int> keynum_pagenum = zns.sanitize(data);
+                pair<int, int> keynum_pagenum = zns.sanitize(data, false);
 
                 record_key_num[keynum_pagenum.first] ++;
                 sum_key_num += keynum_pagenum.first;
@@ -179,7 +187,7 @@ int main(int argc, char * argv[])
                         return 1;
                     }
                     pair<int, int> data = zns.cmd_gen(md, size);
-                    pair<int, int> keynum_pagenum = zns.sanitize(data);
+                    pair<int, int> keynum_pagenum = zns.sanitize(data, false);
 
                     record_key_num[keynum_pagenum.first] ++;
                     sum_key_num += keynum_pagenum.first;
@@ -211,6 +219,21 @@ int main(int argc, char * argv[])
         }
         else {
             cout << "stack mode\n";
+            // ./main -s -t <exp> <KPP> <B(cmd_per_group)> <outFile>
+            /* 
+                batch size will based on input variable "B"
+                for size 2^e,
+                batch size = 2^ ((e/B)*B)
+            */
+            map<int, int> batch_size_table;     // group id - batch size
+            int B = cmd_per_group;
+            for(int i = 1; i < exp; i += B) {
+                int size = pow(2, i);
+                for(int j = 0; j < B; j ++) {
+                    batch_size_table[i+j] = size;
+                }
+            }
+            
             // draw stack result
             // cmd_per_group variable not used. each bar is one zone
             // stack sanitize result in one zone and one bar
@@ -239,34 +262,25 @@ int main(int argc, char * argv[])
                 }
 
                 // sanitize
-                int size;   // sanitize size for each time based on total amount of sanitize
-                if(i <= 7) size = 2;
-                else if(i > 7 && i <= 14) size = pow(2, 8);
-                else size = pow(2, 15);
 
                 int total_sanitize_size = 0;
                 while(total_sanitize_size < pow(2, i)) {
                     // mark some data as invalid
-                    pair<int, int> data = zns.cmd_gen(Mode::by_rand, size);
-                    pair<int, int> keynum_pagenum = zns.sanitize(data);
-                    total_sanitize_size += size;
+                    pair<int, int> data = zns.cmd_gen(Mode::by_rand, batch_size_table[i]);
+                    pair<int, int> keynum_pagenum = zns.sanitize(data, true);
+                    total_sanitize_size += batch_size_table[i];
 
                     record_key_num[i].push_back(keynum_pagenum.first);
                     record_page_num[i].push_back(keynum_pagenum.second);
                 }
+                cout << "zone " << i << " done\n";
             }
             // output stack result
             // #key result
             ofs << "UPDATED KEYS\n";
             ofs << "batch_size total_size #keys_stacked\n";
             for(auto i: record_key_num) {
-                // batch size
-                int size;
-                if(i.first <= 7) size = 2;
-                else if(i.first > 7 && i.first <= 14) size = pow(2, 8);
-                else size = pow(2, 15);
-
-                ofs << size << " " << "2^" << i.first << " ";
+                ofs << batch_size_table[i.first] << " " << "2^" << i.first << " ";
                 for(auto j: i.second)
                     ofs << j << " ";
                 ofs << endl;
@@ -277,13 +291,7 @@ int main(int argc, char * argv[])
             ofs << "UPDATED PAGES\n";
             ofs << "batch_size total_size #pages_stacked\n";
             for(auto i: record_page_num) {
-                // batch size
-                int size;
-                if(i.first <= 7) size = 2;
-                else if(i.first > 7 && i.first <= 14) size = pow(2, 8);
-                else size = pow(2, 15);
-
-                ofs << size << " " << "2^" << i.first << " ";
+                ofs << batch_size_table[i.first] << " " << "2^" << i.first << " ";
                 for(auto j: i.second)
                     ofs << j << " ";
                 ofs << endl;
@@ -310,7 +318,6 @@ int main(int argc, char * argv[])
 
         for(int i = 0; i < cmd_per_group; i ++) {
             // write to full
-            int counter = 0;    // count write KP
             Tree_Req zns(Maxlba, KPP, L, RPK);
             while(zns.write_pointer <= Maxlba && !ifs.eof()) {
                 // get SNIA size
@@ -322,7 +329,7 @@ int main(int argc, char * argv[])
                     // write
                     int R_id = zns.add_request(w_size);
                     if(R_id == -1) break;
-                    counter += zns.write_data(R_id);
+                    zns.write_data(R_id);
                 }
                 // check ifs
                 if(ifs.eof()) {
@@ -333,7 +340,6 @@ int main(int argc, char * argv[])
             }
             zns.analyzer();
             
-            // map<int, pair<int, int>> Record;
             for(auto e: zns.candidate_request) {
                 if(e.first == 21) break;
                 //choose a random one from this vector
@@ -345,8 +351,13 @@ int main(int argc, char * argv[])
                 // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
                 record_key_num[e.first] += keynum_pagenum.first;
                 record_page_num[e.first] += keynum_pagenum.second;
+                if(keynum_pagenum.second == 0) {
+                    cout << "0 page error\n";
+                    return 0;
+                }
                 num[e.first] ++;
             }
+
         }
         cout << "zns done\n";
 
