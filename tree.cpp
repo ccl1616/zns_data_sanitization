@@ -469,10 +469,13 @@ int Tree_Req::write_data(int R_id)
 
     // call key manager to create parent key if needed
     key_manager(MLI, page_collector);
-    // create device key
-    set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
-    if(it == tree[0].end())
-        page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+
+    // create device key if DNE (cause key_manager wont hit lv 0)
+    if(Request_table.size() >= 2) {
+        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+        if(it == tree[0].end())
+            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+    }
 
     // return # updated key pages
     {
@@ -486,6 +489,7 @@ int Tree_Req::write_data(int R_id)
 int Tree_Req::key_manager(int lv, set<int> &page_collector)
 {
     if(lv == 0) {
+        // probably wont hit cause KPP is big
         // if device key not exists, create device key
         set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
         if(it == tree[0].end())
@@ -532,7 +536,7 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
         for(auto key: tree[lv]) {
             if(key.begin == lba_begin && (key.end - key.begin == (size - 1))) {
                 count ++;
-                lba_begin += size;  // move lba_begin to next candidate
+                lba_begin += size;  // move lba_begin to next candidate key.begin id
             }
             else break;     // non-consecutive
 
@@ -573,53 +577,7 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
             }
         }
     }
-    // else if(md == Mode::by_req){
-    //     // gen cmd based on request
-    //     // rand a Request id
-    //     // add up size till targeted size
-    //     // if failed, pick another Request id
-    //     int req_begin = -1, req_end, cur_size = 0;
-    //     // TEMP ------------------------------------------------------------------- UNUSE
-    //     while(req_begin == -1) {
-    //         // an iteration to gen cmd
-    //         req_begin = rand_gen(0, Request_table.size()-1); // pick a request as starting point 
-    //         req_end = req_begin;
-    //         cur_size = Request_table[req_begin].second;  
-    //         int checker = range_checker(cur_size, size);    // 0 = smaller than size; 1 = perfect fit; 2 = oversize         
-    //         if(checker == 1) {
-    //             // find a perfect request, return result
-    //             return make_pair(req_begin, req_begin);
-    //         }
-    //         else if(checker == 2) {
-    //             // size too big, change another request to begin
-    //             req_begin = -1;
-    //             continue;
-    //         }
-    //         else {
-    //             // add up
-    //             while( cur_size < size && req_end < (Request_table.size()-1) ) {
-    //                 req_end ++;
-    //                 if(req_end >= Request_table.size()) {
-    //                     req_begin = -1;
-    //                     break;  // invalid req id
-    //                 }
-    //                 else cur_size += Request_table[req_end].second;
 
-    //                 // check if end
-    //                 int checker = range_checker(cur_size, size);
-    //                 if(checker == 1) return make_pair(req_begin, req_end);  // current chunk is perfect
-    //                 else if(checker == 2) {
-    //                     // too big. pick another start Request id
-    //                     req_begin = -1;
-    //                     break;
-    //                 }
-    //                 // else keep add up
-    //             }
-    //         }
-    //     }
-
-    //     // return Request id
-    // }
     return make_pair(0,0);
 }
 pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
@@ -638,7 +596,7 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     // call original sanitize
     // sanitize data and send report to ofs
     mark_data(target);
-    cout << "1. mark_data done\n";
+    cout << "1. mark_data done " << target.first << " " << target.second << endl;
     upward_update(MLI);
     // update device key by hand
         update_key_status(make_pair(0, Maxlba), 0, Status::updated);
@@ -661,7 +619,14 @@ void Tree_Req::upward_update(int lv)
         int quo = tree[MLI].size() / chunk_size;
         int rem = tree[MLI].size() % chunk_size;
         bool modification = false;
-        // check each unit of keys and decide their parent status
+        // if there's no key in this level, update device key
+        auto it_lv = tree.find(lv);
+        if(it_lv == tree.end()) {
+            upward_update(0);
+            return;
+        }
+
+        // check each chunk of keys and decide their parent status
         auto it = tree[lv].begin();
         // check chunks
         for(int i = 0; i < quo; i ++) {
@@ -701,7 +666,15 @@ void Tree_Req::upward_update(int lv)
 
 Key Tree_Req::return_parent_key_info(Key k)
 {
-    
+    if(k.level - 1 != 0) {
+        int size_parent = size_table[k.level - 1];
+        int par_begin = k.begin / size_parent;  // take int
+        par_begin = par_begin * size_parent;
+        return Key(par_begin, par_begin + size_parent - 1, k.level - 1);
+    }
+    else {
+        return Key(0, Maxlba, 0);
+    }
 }
 
 

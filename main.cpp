@@ -339,11 +339,12 @@ int main(int argc, char * argv[])
                 }
             }
             zns.analyzer();
-            
+
             for(auto e: zns.candidate_request) {
                 if(e.first == 21) break;
                 //choose a random one from this vector
                 pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
+                cout << e.first << " ";
                 pair<int, int> keynum_pagenum = zns.sanitize(data, md);
 
                 // cout << "2^" << e.first << " ";
@@ -368,7 +369,7 @@ int main(int argc, char * argv[])
             float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
             float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
             ofs << "2^" << size << " ";
-            ofs << mean_key << " " << mean_page << endl;
+            ofs << mean_key << " " << mean_page << " " << record_key_num[size] << endl;
         }
         
     }
