@@ -724,7 +724,6 @@ int range_checker(int x, int target)
     else return 1;
 }
 
-// testing
 void Tree_Req::analyzer()
 {
     int n = Request_table.size() - 1;
@@ -734,6 +733,16 @@ void Tree_Req::analyzer()
             candidate_request[ log(sum)/log(2) ].push_back(make_pair(i, j));
         }
     }
+    // count request size avg, min, max
+    float sum, avg;
+    int min = pow(2, 21), max = -1;
+    for(auto i: Request_table) {
+        sum += i.second.second;
+        if(i.second.second < min) min = i.second.second;
+        if(i.second.second > max) max = i.second.second;
+    }
+    avg = sum / n;
+    cout << avg << ", " << min << ", " << max << endl;
 }
 int Tree_Req::acculumator(int start, int end)
 {

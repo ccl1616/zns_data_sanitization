@@ -341,7 +341,7 @@ int main(int argc, char * argv[])
             zns.analyzer();
 
             for(auto e: zns.candidate_request) {
-                if(e.first == 21) break;
+                // if(e.first == 21) break;
                 //choose a random one from this vector
                 pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
                 cout << i << ": " << e.first << endl;
@@ -358,7 +358,12 @@ int main(int argc, char * argv[])
                 }
                 num[e.first] ++;
             }
-
+            // debug
+            // sanitize all data
+            // pair<int, int> data = make_pair(0, zns.Request_table.size() - 1);
+            // pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+            // cout << "key num, page num" << endl;
+            // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
         }
         cout << "zns done\n";
 
