@@ -188,29 +188,30 @@ set<Key> Tree::mark_data_stack(pair<int, int> data)
     // cout << endl;
     return upd;
 }
-pair<int, int> Tree::sanitize(pair<int, int> data, bool is_stack)
+pair<int, int> Tree::sanitize(pair<int, int> data)
 {
     // sanitize data and send report to ofs
-    if(!is_stack) {
-        mark_data(data);
-        upward_update(MLI);
-        pair<int, int> keynum_pagenum = downward_update(false);
-        return keynum_pagenum;
+    mark_data(data);
+    upward_update(MLI);
+    pair<int, int> keynum_pagenum = downward_update(false);
+    return keynum_pagenum;
+}
+pair<int, pair<int, int>> Tree::sanitize_stacked(pair<int, int> data)
+{
+    // for the case that several commands would perform on the same zone
+    set<Key> marked_data = mark_data_stack(data);   // get only valid data
+    // float non_overlap_percentage = 100*(marked_data.size() / (data.second - data.first + 1));
+    
+    set<Key> updated_keys;  // save result updated keys in this iteration
+    upward_update_targeted(marked_data, updated_keys);
+    // remove invalid keys for updated_keys set
+    set<Key> updated_keys_wo_invalid;
+    for(auto i: updated_keys) {
+        if(i.st == Status::updated)
+            updated_keys_wo_invalid.insert(i);
     }
-    else {
-    // stack sanitize
-        set<Key> marked_data = mark_data_stack(data);
-        set<Key> updated_keys;  // save result updated keys in this iteration
-        upward_update_targeted(marked_data, updated_keys);
-        // remove invalid keys fro updated_keys set
-        set<Key> updated_keys_wo_invalid;
-        for(auto i: updated_keys) {
-            if(i.st == Status::updated)
-                updated_keys_wo_invalid.insert(i);
-        }
-        pair<int, int> keynum_pagenum = make_pair(updated_keys_wo_invalid.size(), key_page_calculator_given_set(updated_keys_wo_invalid));
-        return keynum_pagenum;
-    }
+    pair<int, int> keynum_pagenum = make_pair(updated_keys_wo_invalid.size(), key_page_calculator_given_set(updated_keys_wo_invalid));
+    return make_pair(marked_data.size(), keynum_pagenum);
 }
     
 // sanitize subfunction
@@ -751,4 +752,18 @@ int Tree_Req::acculumator(int start, int end)
             sum += Request_table[i].second;
     }
     return sum;
+}
+bool Tree::valid_cmd(pair<int, int> data)
+{
+    int valid = 0;
+    for(int i = data.first; i <= data.second; i ++) {
+        auto it = tree[MLI].find(Key(i, i, MLI));
+        if(it == tree[MLI].end()) {
+            continue;
+        }
+        else if(it->st == Status::valid) {
+            valid ++;
+        }
+    }
+    return (valid > 0);
 }

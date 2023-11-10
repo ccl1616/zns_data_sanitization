@@ -70,8 +70,9 @@ public:
 
 // sanitize
     void mark_data(pair<int, int> data); // mark data chunk as invalid
-    set<Key> mark_data_stack(pair<int, int> data);
-    pair<int, int> sanitize(pair<int, int> data, bool is_stack);    // given target data, return updated keynum, pagenum
+    set<Key> mark_data_stack(pair<int, int> data);  // return data that are still valid in the input
+    pair<int, int> sanitize(pair<int, int> data);    // given target data, return updated keynum, pagenum
+    pair<int, pair<int, int>> sanitize_stacked(pair<int, int> data);    // sanitize function especially for stacked type of experiment
     // sanitize subfunction
     void upward_update(int lv); // given current level, perform upward checks
     void upward_update_targeted(set<Key> target, set<Key> &updated);    // update targeted key's parents only
@@ -86,6 +87,7 @@ public:
     int key_page_calculator();
     int key_page_calculator_given_set(set<Key> S);    // given set S, count #key pages in S
     Key return_parent_key_info(Key k);  // calculate parent of key k
+    bool valid_cmd(pair<int, int> data);    // for Stack experiment; check if the sanitize cmd is valid by checking its data status
 };
 
 // ======================================================================

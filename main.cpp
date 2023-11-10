@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
                     return 1;
                 }
                 pair<int, int> data = zns.cmd_gen(md, size);
-                pair<int, int> keynum_pagenum = zns.sanitize(data, false);
+                pair<int, int> keynum_pagenum = zns.sanitize(data);
 
                 record_key_num[keynum_pagenum.first] ++;
                 sum_key_num += keynum_pagenum.first;
@@ -183,7 +183,7 @@ int main(int argc, char * argv[])
                         return 1;
                     }
                     pair<int, int> data = zns.cmd_gen(md, size);
-                    pair<int, int> keynum_pagenum = zns.sanitize(data, false);
+                    pair<int, int> keynum_pagenum = zns.sanitize(data);
 
                     record_key_num[keynum_pagenum.first] ++;
                     sum_key_num += keynum_pagenum.first;
@@ -215,28 +215,21 @@ int main(int argc, char * argv[])
         }
         else {
             cout << "stack mode\n";
-            // ./main -s -t <exp> <KPP> <B(cmd_per_group)> <outFile>
-            /* 
-                batch size will based on input variable "B"
-                for size 2^e,
-                batch size = 2^ ((e/B)*B)
-            */
-            map<int, int> batch_size_table;     // group id - batch size
-            int B = cmd_per_group;
-            for(int i = 1; i < exp; i += B) {
-                int size = pow(2, i);
-                for(int j = 0; j < B; j ++) {
-                    batch_size_table[i+j] = size;
-                }
+            // ./main -s -t <exp> <KPP> <cmd_per_group> <outFile>
+            
+            map<int, int> size_table;   // command size
+            int denominator = 4;    // exponential of denominator
+            for(int i = pow(2, denominator - 1); i < pow(2, denominator); i ++) {
+                size_table[i] = pow(2, exp - denominator) * i;
             }
             
             // draw stack result
             // cmd_per_group variable not used. each bar is one zone
             // stack sanitize result in one zone and one bar
-            map<int, vector<int>> record_key_num;   // total_size, stack results
-            map<int, vector<int>> record_page_num;  // total_size, stack results
-            for(int i = 1; i < exp; i ++) {
-
+            map<int, vector<int>> record_NoD;     // NoD: Number of data
+            map<int, vector<int>> record_key_num;   // sanitize cmd size, stack results
+            map<int, vector<int>> record_page_num;  // sanitize cmd size, stack results
+            for(auto i: size_table) {
                 Tree zns(Maxlba, KPP, L);
                 // write a zone to full
                 while(zns.write_pointer <= Maxlba && !ifs.eof()) {
@@ -256,43 +249,63 @@ int main(int argc, char * argv[])
                         ofs << "hit file end\n";
                     }
                 }
+                // perform several sanitize commands on the same zone 
+                for(int j = 0; j < cmd_per_group; j++) {
+                    // sanitize
+                    pair<int, int> data;
+                    bool valid_cmd = false;
+                    int counter = 0;
+                    while(!valid_cmd && counter < 1000) {
+                        data = zns.cmd_gen(Mode::by_rand, size_table[i.first]);
+                        valid_cmd = zns.valid_cmd(data);
+                        counter ++;
+                    }
+                    if(counter >= 1000 && !valid_cmd) {
+                        // no valid cmd can be generated
+                        cout << "no valid cmd can be generated: " << j << endl;
+                        return 0;
+                    }
+                    pair<int, int> keynum_pagenum;
+                    int NoD;
+                    pair<int, pair<int, int>> temp = zns.sanitize_stacked(data);
+                    NoD = temp.first; keynum_pagenum = temp.second;
 
-                // sanitize
-
-                int total_sanitize_size = 0;
-                while(total_sanitize_size < pow(2, i)) {
-                    // mark some data as invalid
-                    pair<int, int> data = zns.cmd_gen(Mode::by_rand, batch_size_table[i]);
-                    pair<int, int> keynum_pagenum = zns.sanitize(data, true);
-                    total_sanitize_size += batch_size_table[i];
-
-                    record_key_num[i].push_back(keynum_pagenum.first);
-                    record_page_num[i].push_back(keynum_pagenum.second);
+                    record_NoD[i.first].push_back(NoD);
+                    record_key_num[i.first].push_back(keynum_pagenum.first);
+                    record_page_num[i.first].push_back(keynum_pagenum.second);
+                    cout << "zone " << i.first << "-" << j << " done\n";
                 }
-                cout << "zone " << i << " done\n";
-            }
-            // output stack result
-            // #key result
-            ofs << "UPDATED KEYS\n";
-            ofs << "batch_size total_size #keys_stacked\n";
-            for(auto i: record_key_num) {
-                ofs << batch_size_table[i.first] << " " << "2^" << i.first << " ";
-                for(auto j: i.second)
-                    ofs << j << " ";
-                ofs << endl;
-            }
-            ofs << "\n\n";
 
-            // #page result
-            ofs << "UPDATED PAGES\n";
-            ofs << "batch_size total_size #pages_stacked\n";
-            for(auto i: record_page_num) {
-                ofs << batch_size_table[i.first] << " " << "2^" << i.first << " ";
-                for(auto j: i.second)
-                    ofs << j << " ";
+                // print result for one zone
+                ofs << "sanitize_command_size = " << size_table[i.first] << "(" << i.first << "/" << pow(2, denominator) << " zone )\n";
+                ofs << "ID NoD #Key #Page" << endl;
+                for(int j = 0; j < cmd_per_group; j ++) {
+                    ofs << j << ": " << record_NoD[i.first][j] << " " << record_key_num[i.first][j] << " " << record_page_num[i.first][j] << endl;
+                }
                 ofs << endl;
             }
-            ofs << "\n\n";
+            // // output stack result
+            // // #key result
+            // ofs << "UPDATED_KEYS\n";
+            // ofs << "sanitize_command_size #keys\n";
+            // for(auto i: record_key_num) {
+            //     ofs << size_table[i.first] << " " << i.first << " ";
+            //     for(auto j: i.second)
+            //         ofs << j << " ";
+            //     ofs << endl;
+            // }
+            // ofs << "\n\n";
+
+            // // #page result
+            // ofs << "UPDATED_PAGES\n";
+            // ofs << "sanitize_command_size #pages\n";
+            // for(auto i: record_page_num) {
+            //     ofs << size_table[i.first] << " " << i.first << " ";
+            //     for(auto j: i.second)
+            //         ofs << j << " ";
+            //     ofs << endl;
+            // }
+            // ofs << "\n\n";
         }
     }   // end of SNIA Mode
 
