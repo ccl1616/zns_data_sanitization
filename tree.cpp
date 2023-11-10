@@ -329,6 +329,8 @@ pair<int, int> Tree::downward_update(bool all_to_valid)
                 page_collector.insert(key.page_id);
                 total_updated_keys ++;
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
+                // debug
+                // cout << key << endl;
             }
             if(all_to_valid && key.st == Status::invalid) {
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
@@ -560,41 +562,37 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
 {
     if(md == Mode::by_rand) {
         // rand LBA
-        int a, b = -1;
-        while(b == -1) {
-            a = rand_gen(0, Maxlba);   // gen a valid data id
-            if( (a + size - 1) <= Maxlba) {
-                b = a + size - 1;
-                return make_pair(a, b);     // return LBA id
-            }
+        // candidate_request[size] is a vector, randomly pick one from this vector
+        auto v = candidate_request[size];
+        return v[rand_gen(0, v.size() - 1)];
+    }
+    else if(md == Mode::by_key) {
+        // key-aligned
+        for(auto chunk: candidate_request[size]) {
+            // return a key-aligned chunk
+            if(chunk.first % RPK == 0) return chunk;
         }
+        // no key-aligned chunk, return random one
+        cout << "no key-aligned chunk\n";
+        return candidate_request[size][rand_gen(0, candidate_request[size].size() - 1)];
     }
 
     return make_pair(0,0);
 }
 pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
 {
-    pair<int, int> target;
-    if(md == Mode::by_rand) {
-        // perform key conversion
-        // lba -> actual key id
-        target = make_pair(LBA_2_Request[data.first], LBA_2_Request[data.second]);
-    }
-    else {
-        // data is Request id, which is the key id
-        target = data;
-    }
+    // data is Request id, which is the key id
 
     // call original sanitize
     // sanitize data and send report to ofs
-    mark_data(target);
-    cout << "1. mark_data done " << target.first << " " << target.second << endl;
+    mark_data(data);
+    cout << "1. mark_data done " << data.first << " " << data.second << endl;
     upward_update(MLI);
     // update device key by hand
         update_key_status(make_pair(0, Maxlba), 0, Status::updated);
     cout << "2. upward_update done\n";
-    pair<int, int> keynum_pagenum = downward_update(md == Mode::by_req);
-    cout << "3. downward_update done\n";
+    pair<int, int> keynum_pagenum = downward_update(true);  // set all_to_valid to true
+    cout << "3. downward_update done\n\n";
     return keynum_pagenum;
 }
 void Tree_Req::upward_update(int lv)
@@ -734,15 +732,15 @@ void Tree_Req::analyzer()
         }
     }
     // count request size avg, min, max
-    float sum, avg;
-    int min = pow(2, 21), max = -1;
-    for(auto i: Request_table) {
-        sum += i.second.second;
-        if(i.second.second < min) min = i.second.second;
-        if(i.second.second > max) max = i.second.second;
-    }
-    avg = sum / n;
-    cout << avg << ", " << min << ", " << max << endl;
+    // float sum, avg;
+    // int min = pow(2, 21), max = -1;
+    // for(auto i: Request_table) {
+    //     sum += i.second.second;
+    //     if(i.second.second < min) min = i.second.second;
+    //     if(i.second.second > max) max = i.second.second;
+    // }
+    // avg = sum / n;
+    // cout << avg << ", " << min << ", " << max << endl;
 }
 int Tree_Req::acculumator(int start, int end)
 {

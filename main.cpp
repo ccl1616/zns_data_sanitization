@@ -39,28 +39,24 @@ int main(int argc, char * argv[])
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
     Mode md;
+    // mode
+    if(vec[1] == "-k") md = Mode::by_key;
+    else if(vec[1] == "-r") md = Mode::by_rand;
+    else if(vec[1] == "-t")md = Mode::by_stack;
+    else {
+        cout << "input mode wrong\n";
+        return 0;
+    }
+    // exp variable
     if(vec[0] == "-r") {
         // request exp
-        // mode
-        if(vec[1] == "-r") md = Mode::by_rand;
-        else if(vec[1] == "-q") md = Mode::by_req;
-        else if(vec[1] == "-p") md = Mode::by_partial_req;
-
         // -r -r <exp> <KPP> <RPK> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
     }
     else {
         // md = (vec[1] == "-k") ?Mode::by_key :Mode::by_rand;
         // key exp, SNIA exp
-        // mode: key, rand, stack
-        if(vec[1] == "-k") md = Mode::by_key;
-        else if(vec[1] == "-r") md = Mode::by_rand;
-        else if(vec[1] == "-t")md = Mode::by_stack;
-        else {
-            cout << "input mode wrong\n";
-            return 0;
-        }
-
+        // -s -r <exp> <KPP> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), cmd_per_group = stoi(vec[4]);
     }
     // calculate system spec
@@ -300,8 +296,7 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
-    // Request Mode ./main -r -q <exp> <KPP> <RPK> <cmd> <outFile>
-    // *************** WARNING: segmentation fault possible
+    // Request Mode ./main -r -r/-k <exp> <KPP> <RPK> <cmd> <outFile>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
         if(argc < 8) {
@@ -343,7 +338,8 @@ int main(int argc, char * argv[])
             for(auto e: zns.candidate_request) {
                 // if(e.first == 21) break;
                 //choose a random one from this vector
-                pair<int, int> data = e.second[rand_gen(0, e.second.size()-1)];     // md == by_req
+                pair<int, int> data;
+                data = zns.cmd_gen(md, e.first);    // request id
                 cout << i << ": " << e.first << endl;
                 pair<int, int> keynum_pagenum = zns.sanitize(data, md);
 
