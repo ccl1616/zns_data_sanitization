@@ -48,7 +48,7 @@ int main(int argc, char * argv[])
         return 0;
     }
     // exp variable
-    if(vec[0] == "-r") {
+    if(vec[0] == "-r" || vec[0] == "-rf") {
         // request exp
         // -r -r <exp> <KPP> <RPK> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
@@ -387,7 +387,67 @@ int main(int argc, char * argv[])
         }
         
     }
+    else if(vec[0] == "-rf") { 
+        int fixed_cmd_size = 10000;
+        cout << "request mode, fixed size request with size: " << fixed_cmd_size << endl;
+        if(argc < 8) {
+            cout << "wrong input\n";
+            return 0;
+        }
+        // input file
+        ifstream ifs;
+        ifs.open("s17_01_all.txt");
+        
+        map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
+        map<int, float> record_key_num;   // (size, sum #updated keys)
+        map<int, float> record_page_num;   // (size, sum #R/W pages)
 
+        for(int i = 0; i < cmd_per_group; i ++) {
+            // write to full
+            Tree_Req zns(Maxlba, KPP, L, RPK);
+            while(zns.write_pointer <= Maxlba) {
+                int R_id = zns.add_request(fixed_cmd_size);
+                if(R_id == -1) {
+                    cout << "R_id == -1" << endl;
+                    break;
+                }
+                zns.write_data(R_id);
+            }
+            zns.analyzer();
+
+            for(auto e: zns.candidate_request) {
+                // if(e.first == 21) break;
+                //choose a random one from this vector
+                pair<int, int> data;
+                data = zns.cmd_gen(md, e.first);    // request id
+                cout << i << ": " << e.first << endl;
+                pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+
+                // cout << "2^" << e.first << " ";
+                // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+                // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
+                record_key_num[e.first] += keynum_pagenum.first;
+                record_page_num[e.first] += keynum_pagenum.second;
+                if(keynum_pagenum.second == 0) {
+                    cout << "0 page error\n";
+                    return 0;
+                }
+                num[e.first] ++;
+            }
+        }
+        cout << "zns done\n";
+
+        ofs << "size #key #page #zones\n";
+        for(auto k: num) {
+            int size = k.first;
+            int n = k.second;
+            float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
+            float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
+            ofs << "2^" << size << " ";
+            ofs << mean_key << " " << mean_page << " " << n << endl;
+        }
+        
+    }
     // SNIA write ./main -sw -r <exp> <KPP> <cmd> <outFile>
     // draw write key pages-data key pages bar chart
     else if(vec[0] == "-sw") {
