@@ -14,11 +14,11 @@ using namespace std;
 // ====================================================================================
 int main(int argc, char * argv[])
 {
-    //                 [0] [1] [2]   [3]   [4]   [5]
-    // Key Mode ./main -k  -r  <exp> <KPP> <cmd> <out file name>
+    //                 0   1   2     3     4     5
+    // Key Mode ./main -k  -r <exp> <KPP> <cmd> <out file name>
     // SNIA Mode ./main -s -r <exp> <KPP> <cmd> <out file name>
 
-    //                     [0] [1] [2]   [3]   [4]   [5]   [6]
+    //                     0   1    2     3     4     5     6
     // Request Mode ./main -r  -r  <exp> <KPP> <RPK> <cmd> <out file name>
 
     // check input
@@ -42,13 +42,13 @@ int main(int argc, char * argv[])
     // mode
     if(vec[1] == "-k") md = Mode::by_key;
     else if(vec[1] == "-r") md = Mode::by_rand;
-    else if(vec[1] == "-t")md = Mode::by_stack;
+    else if(vec[1] == "-t") md = Mode::by_stack;
     else {
         cout << "input mode wrong\n";
         return 0;
     }
     // exp variable
-    if(vec[0] == "-r" || vec[0] == "-rf") {
+    if(vec[0] == "-r" || vec[0] == "-rf" || vec[0] == "-rfsa") {
         // request exp
         // -r -r <exp> <KPP> <RPK> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
@@ -387,10 +387,12 @@ int main(int argc, char * argv[])
         }
         
     }
+    //                            0   1      2     3     4     5    6                   7         (argc = 9)
+    // Request Fixed Size ./main -rf -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
     else if(vec[0] == "-rf") { 
-        int fixed_cmd_size = 10000;
-        cout << "request mode, fixed size request with size: " << fixed_cmd_size << endl;
-        if(argc < 8) {
+        int fixed_req_size = stoi(vec[6]);  // get Write Request size
+        cout << "request mode, fixed size request with size: " << fixed_req_size << endl;
+        if(argc < 9) {
             cout << "wrong input\n";
             return 0;
         }
@@ -406,7 +408,7 @@ int main(int argc, char * argv[])
             // write to full
             Tree_Req zns(Maxlba, KPP, L, RPK);
             while(zns.write_pointer <= Maxlba) {
-                int R_id = zns.add_request(fixed_cmd_size);
+                int R_id = zns.add_request(fixed_req_size);
                 if(R_id == -1) {
                     cout << "R_id == -1" << endl;
                     break;
@@ -447,6 +449,13 @@ int main(int argc, char * argv[])
             ofs << mean_key << " " << mean_page << " " << n << endl;
         }
         
+    }
+    //                                                          0     1      2     3     4     5    6                   7         (argc = 9)
+    // Request Fixed Size and Sanitization Assigned Size ./main -rfsa -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
+    else if(vec[0] == "rfsa") {
+        // fized size write in
+        // determine sanitization sizes
+        // sanitize -r/-k
     }
     // SNIA write ./main -sw -r <exp> <KPP> <cmd> <outFile>
     // draw write key pages-data key pages bar chart
