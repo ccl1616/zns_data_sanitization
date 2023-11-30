@@ -346,7 +346,7 @@ int main(int argc, char * argv[])
                     ofs << "hit file end\n";
                 }
             }
-            zns.analyzer();
+            zns.analyzer(vec[0]);
 
             for(auto e: zns.candidate_request) {
                 // if(e.first == 21) break;
@@ -387,6 +387,7 @@ int main(int argc, char * argv[])
         }
         
     }
+    
     //                            0   1      2     3     4     5    6                   7         (argc = 9)
     // Request Fixed Size ./main -rf -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
     else if(vec[0] == "-rf") { 
@@ -415,7 +416,7 @@ int main(int argc, char * argv[])
                 }
                 zns.write_data(R_id);
             }
-            zns.analyzer();
+            zns.analyzer(vec[0]);
 
             for(auto e: zns.candidate_request) {
                 // if(e.first == 21) break;
@@ -450,13 +451,71 @@ int main(int argc, char * argv[])
         }
         
     }
+    
     //                                                          0     1      2     3     4     5    6                   7         (argc = 9)
     // Request Fixed Size and Sanitization Assigned Size ./main -rfsa -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
-    else if(vec[0] == "rfsa") {
-        // fized size write in
-        // determine sanitization sizes
-        // sanitize -r/-k
+    else if(vec[0] == "-rfsa") {
+        // fixed size write in
+        int fixed_req_size = stoi(vec[6]);  // get Write Request size
+        cout << "request mode, fixed size request with size: " << fixed_req_size << endl;
+        if(argc < 9) {
+            cout << "wrong input\n";
+            return 0;
+        }
+        // input file
+        ifstream ifs;
+        ifs.open("s17_01_all.txt");
+        
+        map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
+        map<int, float> record_key_num;   // (size, sum #updated keys)
+        map<int, float> record_page_num;   // (size, sum #R/W pages)
+
+        for(int i = 0; i < cmd_per_group; i ++) {
+            // write to full
+            Tree_Req zns(Maxlba, KPP, L, RPK);
+            while(zns.write_pointer <= Maxlba) {
+                int R_id = zns.add_request(fixed_req_size);
+                if(R_id == -1) {
+                    cout << "R_id == -1" << endl;
+                    break;
+                }
+                zns.write_data(R_id);
+            }
+            zns.analyzer(vec[0]);   // create sanitize testcases
+
+            for(auto e: zns.candidate_request) {
+                // e is in unit of number of requests
+                
+                pair<int, int> data;
+                data = zns.cmd_gen(md, e.first);    // request id
+                cout << i << ": " << e.first << endl;
+                pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+
+                // cout << "2^" << e.first << " ";
+                // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+                // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
+                record_key_num[e.first] += keynum_pagenum.first;
+                record_page_num[e.first] += keynum_pagenum.second;
+                if(keynum_pagenum.second == 0) {
+                    cout << "0 page error\n";
+                    return 0;
+                }
+                num[e.first] ++;
+            }
+        }
+        cout << "zns done\n";
+
+        ofs << "size #key #page #zones\n";
+        for(auto k: num) {
+            int size = k.first;
+            int n = k.second;
+            float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
+            float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
+            ofs << size << " ";
+            ofs << mean_key << " " << mean_page << " " << n << endl;
+        }
     }
+    
     // SNIA write ./main -sw -r <exp> <KPP> <cmd> <outFile>
     // draw write key pages-data key pages bar chart
     else if(vec[0] == "-sw") {

@@ -723,25 +723,40 @@ int range_checker(int x, int target)
     else return 1;
 }
 
-void Tree_Req::analyzer()
+void Tree_Req::analyzer(string experiment)
 {
-    int n = Request_table.size() - 1;
-    for(int i = 0; i <= n; i ++) {
-        for(int j = i; j <= n; j ++) {
-            int sum = acculumator(i, j);
-            candidate_request[ log(sum)/log(2) ].push_back(make_pair(i, j));
+    if(experiment == "-r" || experiment == "-rf") {
+        int n = Request_table.size() - 1;
+        for(int i = 0; i <= n; i ++) {
+            for(int j = i; j <= n; j ++) {
+                int sum = acculumator(i, j);
+                candidate_request[ log(sum)/log(2) ].push_back(make_pair(i, j));
+            }
         }
     }
-    // count request size avg, min, max
-    // float sum, avg;
-    // int min = pow(2, 21), max = -1;
-    // for(auto i: Request_table) {
-    //     sum += i.second.second;
-    //     if(i.second.second < min) min = i.second.second;
-    //     if(i.second.second > max) max = i.second.second;
-    // }
-    // avg = sum / n;
-    // cout << avg << ", " << min << ", " << max << endl;
+    else if(experiment == "-rfsa") {
+        int n = Request_table.size() - 1;
+        int K = floor( Request_table.size() / RPK );    // number of keys
+        // generate sanitization sizes
+        for(int i = 1; i <= K; i ++) {
+            int x = RPK * i;    // in unit of requests
+            for(int j = 0; j <= n ; j ++) {
+                if(j + (x - 1) <= n) {
+                    candidate_request[ x ].push_back(make_pair(j, j + (x - 1)));
+                }
+            }
+        }
+        // debug
+        // cout << n << " " << K << endl;
+        // for(auto i: candidate_request) {
+        //     cout << i.first << endl;
+        //     for(auto p: i.second) {
+        //         cout << p.first << "," << p.second << " ";
+        //     }
+        //     cout << endl;
+        // }
+    }
+    else cout << "wrong experiment for analyzer" << endl;
 }
 int Tree_Req::acculumator(int start, int end)
 {

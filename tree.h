@@ -120,7 +120,7 @@ public:
     pair<int, int> sanitize(pair<int, int> data, Mode md);
     void upward_update(int lv);
 // misc
-    void analyzer();
+    void analyzer(string experiment);
     int acculumator(int start, int end);    // accumulcate data size from Req[start] to Req[end]
     Key return_parent_key_info(Key k);
 };
