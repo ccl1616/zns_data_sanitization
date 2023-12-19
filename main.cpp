@@ -327,17 +327,24 @@ int main(int argc, char * argv[])
         for(int i = 0; i < cmd_per_group; i ++) {
             // write to full
             Tree_Req zns(Maxlba, KPP, L, RPK);
+            float sum = 0;
             while(zns.write_pointer <= Maxlba && !ifs.eof()) {
                 // get SNIA size
                 string s;
-                int w_size;
+                float w_size;
                 ifs >> s;
                 if(s != "") {
-                    w_size = stoi(s);
-                    // write
-                    int R_id = zns.add_request(w_size);
-                    if(R_id == -1) break;
-                    zns.write_data(R_id);
+                    w_size = stoi(s) / pow(2, 14);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^14Byte)
+                    if(w_size >= 1) {
+                        w_size = ceil(w_size);
+                        sum += w_size;
+                        cout << w_size << " " << sum << endl;   // debug, print write process
+                        // write
+                        int R_id = zns.add_request(w_size);
+                        if(R_id == -1) break;
+                        zns.write_data(R_id);
+                    }
+                    
                 }
                 // check ifs
                 if(ifs.eof()) {
@@ -345,7 +352,11 @@ int main(int argc, char * argv[])
                     ifs.seekg(0);   // use this to get back to beginning of file
                     ofs << "hit file end\n";
                 }
+
             }
+            cout << "sum: " << sum << endl;
+            return 0;   // for debug; test
+            
             zns.analyzer(vec[0]);
 
             for(auto e: zns.candidate_request) {

@@ -430,13 +430,13 @@ Key Tree::return_parent_key_info(Key k)
 // ======================================================================
 // ======================================================================
 // ======================================================================
-int Tree_Req::add_request(int size)
+int Tree_Req::add_request(float size)
 {
     // record request info, assign request ID, limit size if needed
     if(write_pointer > Maxlba) return -1;   // no more adding is allowed, return R_ID == -1
     int id = Request_table.size();
     // if the size is too big to current disk, reduce write command size into available #LBA
-    int read_add_size = (write_pointer + size - 1 <= Maxlba) ?size :(Maxlba - write_pointer + 1);
+    float read_add_size = (write_pointer + size - 1 <= Maxlba) ?size :(Maxlba - write_pointer + 1);
     // save request info to Request_table
     Request_table[id] = make_pair(write_pointer, read_add_size);
     return id;
@@ -451,16 +451,16 @@ int Tree_Req::write_data(int R_id)
     // perform actual write, update write pointer
     // at level MLI, add a key named with R_id
     set<int> page_collector;    // save updated key pages id
-    page_collector.insert(add_one_key(R_id, R_id, MLI, Status::valid));
-    write_pointer += Request_table[R_id].second;  // move wp to next available LBA
+    page_collector.insert(add_one_key(R_id, R_id, MLI, Status::valid));     // insert request key
+    write_pointer = ceil(write_pointer + Request_table[R_id].second);   // move up to next available LBA
 
-    // save request info; LBA_2_Request
-    /*
-        for a request
-        [first LBA, first LBA + size - 1] LBA are occupied by this request
-    */
-    for(int i = Request_table[R_id].first; i <= Request_table[R_id].first + Request_table[R_id].second - 1; i ++)
-        LBA_2_Request[i] = R_id;
+    // // save request info; LBA_2_Request
+    // /*
+    //     for a request
+    //     [first LBA, first LBA + size - 1] LBA are occupied by this request
+    // */
+    // for(int i = Request_table[R_id].first; i <= Request_table[R_id].first + Request_table[R_id].second - 1; i ++)
+    //     LBA_2_Request[i] = R_id;
 
     // call key manager to create parent key if needed
     key_manager(MLI, page_collector);
@@ -683,12 +683,12 @@ void Tree::traverse()
             continue;
         cout << "level: " << i.first << endl;
         // skip last level
-        if(i.first == L - 1) {
-            cout << "skip\n";
-            break;
-        }
+        // if(i.first == L - 1) {
+        //     cout << "skip\n";
+        //     break;
+        // }
         // print each key
-        for(auto j: i.second)
+        for(auto j: i.second) 
             cout << j << endl;
     }
     cout << "wp: " << write_pointer << "\n\n";

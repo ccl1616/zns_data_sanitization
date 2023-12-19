@@ -53,7 +53,7 @@ class Tree
 {
 public:
     map<int, set<Key>> tree;
-    int write_pointer;  // the LBA that can do the next append write;;; [MLI].size == LBA num
+    float write_pointer;  // the LBA that can do the next append write;;; [MLI].size == LBA num
     int cur_key_page_id, cur_key_page_capacity;
     int Maxlba, KPP;
     int L, MLI;
@@ -98,8 +98,8 @@ class Tree_Req : public Tree
 public:
     int RPK;    // request per key
     // info tables
-    map<int, pair<int, int>> Request_table;   // Request Id: (first LBA, Request size)
-    map<int, int> LBA_2_Request;    // LBA id - Request id
+    map<int, pair<int, float>> Request_table;   // Request Id: (first LBA, Request size)
+    // map<int, int> LBA_2_Request;    // LBA id - Request id
     map<int, int> size_table;   // level id - size of one key in this level
     map<int, vector<pair<int, int>>> candidate_request;     // candidate chunk of requests for sanitize; log(size)-(R id start, R id end)
 
@@ -110,7 +110,7 @@ public:
             create_size_table();
         }
 // add a request
-    int add_request(int size);  // given request (write) size, add it to table, return request id
+    int add_request(float size);  // given request (write) size, add it to table, return request id
 // write
     int write_data(int R_id);   // write data by table
     int key_manager(int lv, set<int> &page_collector);
