@@ -560,24 +560,26 @@ void Tree_Req::create_size_table()
         size_table[i] = size_table[i + 1] * KPP;
     }
 }
-pair<int, int> Tree_Req::cmd_gen(Mode md, int size)
+pair<int, int> Tree_Req::cmd_gen(Mode md, int target_size)
 {
     if(md == Mode::by_rand) {
-        // rand LBA
-        // candidate_request[size] is a vector, randomly pick one from this vector
-        auto v = candidate_request[size];
-        return v[rand_gen(0, v.size() - 1)];
-    }
-    else if(md == Mode::by_key) {
-        // key-aligned
-        for(auto chunk: candidate_request[size]) {
-            // return a key-aligned chunk
-            if(chunk.first % RPK == 0) return chunk;
+        int a, b = -1, size;
+        while(b == -1) {
+            a = rand_gen(0, Request_table.size() - 1);   // gen a valid data id
+            size = Request_table[a].second;     // accumulate request size
+            b = a + 1;
+            while(size < target_size && b <= Request_table.size() - 1) {
+                size += Request_table[b].second;
+                b ++;   // add one more to the next one, caused line 577 "b - 1"
+            }
+            if(size == target_size) {
+                // found the right chunk
+                return make_pair(a, b - 1);
+            }
+            else b = -1;
         }
-        // no key-aligned chunk, return random one
-        cout << "no key-aligned chunk\n";
-        return candidate_request[size][rand_gen(0, candidate_request[size].size() - 1)];
     }
+    else cout << "wrong mode" << endl;
 
     return make_pair(0,0);
 }

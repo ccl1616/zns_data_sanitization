@@ -319,88 +319,110 @@ int main(int argc, char * argv[])
         // input file
         ifstream ifs;
         ifs.open("s17_01_all.txt");
-
+        // map for recording
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
         map<int, float> record_page_num;   // (size, sum #R/W pages)
-
+        // array for assigned sanitization sizes
+        vector<int> sani_size;  // a vector with entry number = 21
+        for(int i = 0; i <= 20; i ++)
+            sani_size.push_back(pow(2, i));
+        // start
         for(int i = 0; i < cmd_per_group; i ++) {
-            // write to full
-            Tree_Req zns(Maxlba, KPP, L, RPK);
-            float sum = 0;
-            while(zns.write_pointer <= Maxlba && !ifs.eof()) {
-                // get SNIA size
-                string s;
-                float w_size;
-                ifs >> s;
-                if(s != "") {
-                    w_size = stoi(s) / pow(2, 14);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^14Byte)
-                    if(w_size >= 1) {
-                        w_size = ceil(w_size);
-                        sum += w_size;
-                        // cout << w_size << " " << sum << endl;   // debug, print write process
-                        // write
-                        int R_id = zns.add_request(w_size);
-                        if(R_id == -1) break;
-                        zns.write_data(R_id);
-                    }
-                    
-                }
-                // check ifs
-                if(ifs.eof()) {
-                    ifs.clear();
-                    ifs.seekg(0);   // use this to get back to beginning of file
-                    ofs << "hit file end\n";
-                }
+            for(auto s: sani_size) {
+                // create one zone write to full, then perform sani smc with size s
 
-            }
-            // create non-data keys
-            // call key manager to create parent key if needed
-            set<int> page_collector;
-            zns.key_manager(zns.MLI, page_collector);
-            cout << "zone " << i << " write to full capacity" << endl;
-            cout << zns.Request_table.size() << endl;
-            zns.analyzer(vec[0]);   // to be debug
-            cout << "zone " << i << "analyzer done" << endl;
-            for(auto e: zns.candidate_request) {
-                // if(e.first == 21) break;
-                //choose a random one from this vector
+                // write to full
+                Tree_Req zns(Maxlba, KPP, L, RPK);
+                float sum = 0;
+                while(zns.write_pointer <= Maxlba && !ifs.eof()) {
+                    // get SNIA size
+                    string s;
+                    float w_size;
+                    ifs >> s;
+                    if(s != "") {
+                        w_size = stoi(s) / pow(2, 14);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^14Byte)
+                        if(w_size >= 1) {
+                            w_size = ceil(w_size);
+                            sum += w_size;
+                            // cout << w_size << " " << sum << endl;   // debug, print write process
+                            // write
+                            int R_id = zns.add_request(w_size);
+                            if(R_id == -1) break;
+                            zns.write_data(R_id);
+                        }
+                        
+                    }
+                    // check ifs
+                    if(ifs.eof()) {
+                        ifs.clear();
+                        ifs.seekg(0);   // use this to get back to beginning of file
+                        ofs << "hit file end\n";
+                    }
+
+                }
+                // create non-data keys
+                // call key manager to create parent key if needed
+                set<int> page_collector;
+                zns.key_manager(zns.MLI, page_collector);
+                cout << "\nzone " << i << " write to full capacity" << endl;
+
+                // sani
+                // one round of sanitization
                 pair<int, int> data;
-                data = zns.cmd_gen(md, e.first);    // request id
-                cout << i << ": " << e.first << endl;
-                pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+                data = zns.cmd_gen(md, s);    // request id
+                // debug: print sani data chunk and verify
+                cout << "target_size = " << s << "; data: " << data.first << ", " << data.second << endl;
+                
+                // pair<int, int> keynum_pagenum = zns.sanitize(data, md);
 
                 // cout << "2^" << e.first << " ";
                 // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
                 // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
-                record_key_num[e.first] += keynum_pagenum.first;
-                record_page_num[e.first] += keynum_pagenum.second;
-                if(keynum_pagenum.second == 0) {
-                    cout << "0 page error\n";
-                    return 0;
-                }
-                num[e.first] ++;
+                // record_key_num[e.first] += keynum_pagenum.first;
+                // record_page_num[e.first] += keynum_pagenum.second;
+                // if(keynum_pagenum.second == 0) {
+                //     cout << "0 page error\n";
+                //     return 0;
+                // }
+                // num[e.first] ++;
+                // end of sanitization
             }
-            // debug
-            // sanitize all data
-            // pair<int, int> data = make_pair(0, zns.Request_table.size() - 1);
-            // pair<int, int> keynum_pagenum = zns.sanitize(data, md);
-            // cout << "key num, page num" << endl;
-            // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+
+            // zns.analyzer(vec[0]);   // to be debug
+            // cout << "zone " << i << "analyzer done" << endl;
+            // for(auto e: zns.candidate_request) {
+            //     // if(e.first == 21) break;
+            //     //choose a random one from this vector
+            //     pair<int, int> data;
+            //     data = zns.cmd_gen(md, e.first);    // request id
+            //     cout << i << ": " << e.first << endl;
+            //     pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+
+            //     // cout << "2^" << e.first << " ";
+            //     // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+            //     // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
+            //     record_key_num[e.first] += keynum_pagenum.first;
+            //     record_page_num[e.first] += keynum_pagenum.second;
+            //     if(keynum_pagenum.second == 0) {
+            //         cout << "0 page error\n";
+            //         return 0;
+            //     }
+            //     num[e.first] ++;
+            // }
             cout << "zone " << i << " sanitize done" << endl;
         }
         cout << "zns done\n";
 
-        ofs << "size #key #page #zones\n";
-        for(auto k: num) {
-            int size = k.first;
-            int n = k.second;
-            float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
-            float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
-            ofs << "2^" << size << " ";
-            ofs << mean_key << " " << mean_page << " " << n << endl;
-        }
-        
+        // ofs << "size #key #page #zones\n";
+        // for(auto k: num) {
+        //     int size = k.first;
+        //     int n = k.second;
+        //     float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
+        //     float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
+        //     ofs << "2^" << size << " ";
+        //     ofs << mean_key << " " << mean_page << " " << n << endl;
+        // }
     }
     
     //                            0   1      2     3     4     5    6                   7         (argc = 9)
