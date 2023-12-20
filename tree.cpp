@@ -462,15 +462,16 @@ int Tree_Req::write_data(int R_id)
     // for(int i = Request_table[R_id].first; i <= Request_table[R_id].first + Request_table[R_id].second - 1; i ++)
     //     LBA_2_Request[i] = R_id;
 
-    // call key manager to create parent key if needed
-    key_manager(MLI, page_collector);
+//  move this operation of calling key_manager to the timing when all data had been written
+    // // call key manager to create parent key if needed
+    // key_manager(MLI, page_collector);
 
-    // create device key if DNE (cause key_manager wont hit lv 0)
-    if(Request_table.size() >= 2) {
-        set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
-        if(it == tree[0].end())
-            page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
-    }
+    // // create device key if DNE (cause key_manager wont hit lv 0)
+    // if(Request_table.size() >= 2) {
+    //     set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
+    //     if(it == tree[0].end())
+    //         page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
+    // }
 
     // return # updated key pages
     {

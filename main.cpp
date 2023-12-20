@@ -338,7 +338,7 @@ int main(int argc, char * argv[])
                     if(w_size >= 1) {
                         w_size = ceil(w_size);
                         sum += w_size;
-                        cout << w_size << " " << sum << endl;   // debug, print write process
+                        // cout << w_size << " " << sum << endl;   // debug, print write process
                         // write
                         int R_id = zns.add_request(w_size);
                         if(R_id == -1) break;
@@ -354,11 +354,14 @@ int main(int argc, char * argv[])
                 }
 
             }
-            cout << "sum: " << sum << endl;
-            return 0;   // for debug; test
-            
-            zns.analyzer(vec[0]);
-
+            // create non-data keys
+            // call key manager to create parent key if needed
+            set<int> page_collector;
+            zns.key_manager(zns.MLI, page_collector);
+            cout << "zone " << i << " write to full capacity" << endl;
+            cout << zns.Request_table.size() << endl;
+            zns.analyzer(vec[0]);   // to be debug
+            cout << "zone " << i << "analyzer done" << endl;
             for(auto e: zns.candidate_request) {
                 // if(e.first == 21) break;
                 //choose a random one from this vector
@@ -384,6 +387,7 @@ int main(int argc, char * argv[])
             // pair<int, int> keynum_pagenum = zns.sanitize(data, md);
             // cout << "key num, page num" << endl;
             // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
+            cout << "zone " << i << " sanitize done" << endl;
         }
         cout << "zns done\n";
 
