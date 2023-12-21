@@ -330,8 +330,9 @@ pair<int, int> Tree::downward_update(bool all_to_valid)
                 page_collector.insert(key.page_id);
                 total_updated_keys ++;
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
-                // debug
-                // cout << key << endl;
+                // debug check if it is device key
+                if(key.begin == 0 && key.end == Maxlba)
+                    cout << "downward_update find device key" << endl;
             }
             if(all_to_valid && key.st == Status::invalid) {
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
@@ -343,7 +344,7 @@ pair<int, int> Tree::downward_update(bool all_to_valid)
     // for(auto i: page_collector)
     //     cout << i << " ";
     // cout << endl;
-
+    cout << "total_updated_keys = " << total_updated_keys << endl;
     return make_pair(total_updated_keys, page_collector.size());
 }
 bool Tree::update_key_status(pair<int, int> data, int lv, Status new_status)
@@ -593,10 +594,12 @@ pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
     cout << "1. mark_data done " << data.first << " " << data.second << endl;
     upward_update(MLI);
     // update device key by hand
-        update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        // update_key_status(make_pair(0, Maxlba), 0, Status::updated);
+        if(update_key_status(make_pair(0, Maxlba), 0, Status::updated)) cout << "set device key to updated" << endl;
+        else cout << "didnt set device to updated" << endl;
     cout << "2. upward_update done\n";
     pair<int, int> keynum_pagenum = downward_update(true);  // set all_to_valid to true
-    cout << "3. downward_update done\n\n";
+    cout << "3. downward_update done\n";
     return keynum_pagenum;
 }
 void Tree_Req::upward_update(int lv)

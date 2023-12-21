@@ -357,7 +357,7 @@ int main(int argc, char * argv[])
                     if(ifs.eof()) {
                         ifs.clear();
                         ifs.seekg(0);   // use this to get back to beginning of file
-                        ofs << "hit file end\n";
+                        cout << "hit file end\n";
                     }
 
                 }
@@ -374,55 +374,35 @@ int main(int argc, char * argv[])
                 // debug: print sani data chunk and verify
                 cout << "target_size = " << s << "; data: " << data.first << ", " << data.second << endl;
                 
-                // pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+                pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+                record_key_num[s] += keynum_pagenum.first;
+                record_page_num[s] += keynum_pagenum.second;
 
-                // cout << "2^" << e.first << " ";
-                // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
-                // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
-                // record_key_num[e.first] += keynum_pagenum.first;
-                // record_page_num[e.first] += keynum_pagenum.second;
-                // if(keynum_pagenum.second == 0) {
-                //     cout << "0 page error\n";
-                //     return 0;
-                // }
-                // num[e.first] ++;
+                // debug
+                cout << record_key_num[s] << " " << record_page_num[s] << endl;
+
+                if(keynum_pagenum.second == 0) {
+                    cout << "0 page error\n";
+                    return 0;
+                }
+                num[s] ++;
                 // end of sanitization
+
+                cout << "zone " << i << " sanitize by " << s << endl;
             }
-
-            // zns.analyzer(vec[0]);   // to be debug
-            // cout << "zone " << i << "analyzer done" << endl;
-            // for(auto e: zns.candidate_request) {
-            //     // if(e.first == 21) break;
-            //     //choose a random one from this vector
-            //     pair<int, int> data;
-            //     data = zns.cmd_gen(md, e.first);    // request id
-            //     cout << i << ": " << e.first << endl;
-            //     pair<int, int> keynum_pagenum = zns.sanitize(data, md);
-
-            //     // cout << "2^" << e.first << " ";
-            //     // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
-            //     // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
-            //     record_key_num[e.first] += keynum_pagenum.first;
-            //     record_page_num[e.first] += keynum_pagenum.second;
-            //     if(keynum_pagenum.second == 0) {
-            //         cout << "0 page error\n";
-            //         return 0;
-            //     }
-            //     num[e.first] ++;
-            // }
-            cout << "zone " << i << " sanitize done" << endl;
+            
         }
         cout << "zns done\n";
 
-        // ofs << "size #key #page #zones\n";
-        // for(auto k: num) {
-        //     int size = k.first;
-        //     int n = k.second;
-        //     float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
-        //     float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
-        //     ofs << "2^" << size << " ";
-        //     ofs << mean_key << " " << mean_page << " " << n << endl;
-        // }
+        ofs << "size #key #page #zones\n";
+        for(auto k: num) {
+            int size = log(k.first) / log(2);
+            int n = k.second;
+            float mean_key = (record_key_num[k.first] == 0) ?0:(record_key_num[k.first] / n);
+            float mean_page = (record_page_num[k.first] == 0) ?0:(record_page_num[k.first] / n);
+            ofs << "2^" << size << " ";
+            ofs << mean_key << " " << mean_page << " " << n << endl;
+        }
     }
     
     //                            0   1      2     3     4     5    6                   7         (argc = 9)
