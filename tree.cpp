@@ -485,7 +485,7 @@ int Tree_Req::write_data(int R_id)
 }
 int Tree_Req::key_manager(int lv, set<int> &page_collector)
 {
-    if(lv == 0) {
+    if(lv == 0 || tree[lv].size() / KPP < 1) {
         // probably wont hit cause KPP is big
         // if device key not exists, create device key
         set<Key>::iterator it = tree[0].find(Key(0, Maxlba, 0));
@@ -493,7 +493,6 @@ int Tree_Req::key_manager(int lv, set<int> &page_collector)
             page_collector.insert(add_one_key(0, Maxlba, 0, Status::valid));
         return 0;
     }
-    else if(tree[lv].size() / KPP < 1) return 0;
     else if(lv == MLI) {
         // request-key adding logic
         int R_begin = 0, R_end = 0, count = 0;     // starting R id, current count num

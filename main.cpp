@@ -35,7 +35,7 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    if(vec[1] == "-r") ofs.open(vec[vec.size() - 2]);
+    if(vec[0] == "-r") ofs.open(vec[vec.size() - 2]);   // request can give one input trace file as argument
     else ofs.open(vec[vec.size() - 1]);
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
@@ -415,55 +415,74 @@ int main(int argc, char * argv[])
             cout << "wrong input\n";
             return 0;
         }
-        // input file
-        ifstream ifs;
-        ifs.open("s17_01_all.txt");
+        // no need for input file because the write size is fixed
+        // ifstream ifs;
+        // ifs.open("s17_01_all.txt");
         
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
-        map<int, float> record_page_num;   // (size, sum #R/W pages)
-
+        map<int, float> record_page_num;   // (size, sum #R/W pages)        
+        // array for assigned sanitization sizes
+        vector<int> sani_size;  // a vector with sanitize command size; start from 2^12 because this is the minimum unit(4KB = 1LB)
+        for(int i = 12; i <= 20; i ++)
+            sani_size.push_back(pow(2, i));
+        // start
         for(int i = 0; i < cmd_per_group; i ++) {
-            // write to full
-            Tree_Req zns(Maxlba, KPP, L, RPK);
-            while(zns.write_pointer <= Maxlba) {
-                int R_id = zns.add_request(fixed_req_size);
-                if(R_id == -1) {
-                    cout << "R_id == -1" << endl;
-                    break;
+            for(auto s: sani_size) {
+                // create one zone write to full, then perform sani smc with size s
+
+                // write to full
+                Tree_Req zns(Maxlba, KPP, L, RPK);
+                while(zns.write_pointer <= Maxlba) {
+                    int R_id = zns.add_request(fixed_req_size);
+                    if(R_id == -1) {
+                        cout << "R_id == -1" << endl;
+                        break;
+                    }
+                    zns.write_data(R_id);
                 }
-                zns.write_data(R_id);
-            }
-            zns.analyzer(vec[0]);
+                // create non-data keys
+                // call key manager to create parent key if needed
+                set<int> page_collector;
+                zns.key_manager(zns.MLI, page_collector);
+                cout << "\nzone " << i << " write to full capacity" << endl;
 
-            for(auto e: zns.candidate_request) {
-                // if(e.first == 21) break;
-                //choose a random one from this vector
+                // sani
+                // one round of sanitization
                 pair<int, int> data;
-                data = zns.cmd_gen(md, e.first);    // request id
-                cout << i << ": " << e.first << endl;
+                data = zns.cmd_gen(md, s);    // request id
+                // debug: print sani data chunk and verify
+                cout << "target_size = " << s << "; data: " << data.first << ", " << data.second << endl;
+                
                 pair<int, int> keynum_pagenum = zns.sanitize(data, md);
+                record_key_num[s] += keynum_pagenum.first;
+                record_page_num[s] += keynum_pagenum.second;
 
-                // cout << "2^" << e.first << " ";
-                // cout << keynum_pagenum.first << ", " << keynum_pagenum.second << endl;
-                // Record[e.first] = make_pair(keynum_pagenum.first, keynum_pagenum.second);
-                record_key_num[e.first] += keynum_pagenum.first;
-                record_page_num[e.first] += keynum_pagenum.second;
+                // debug
+                cout << record_key_num[s] << " " << record_page_num[s] << endl;
+
                 if(keynum_pagenum.second == 0) {
                     cout << "0 page error\n";
+                    for(auto level: zns.tree) {
+                        cout << "level " << level.first << " has " << level.second.size() << "keys\n";
+                    }
                     return 0;
                 }
-                num[e.first] ++;
+                num[s] ++;
+                // end of sanitization
+
+                cout << "zone " << i << " sanitize by " << s << endl;
             }
+            
         }
         cout << "zns done\n";
 
         ofs << "size #key #page #zones\n";
         for(auto k: num) {
-            int size = k.first;
+            int size = log(k.first) / log(2);
             int n = k.second;
-            float mean_key = (record_key_num[size] == 0) ?0:(record_key_num[size] / n);
-            float mean_page = (record_page_num[size] == 0) ?0:(record_page_num[size] / n);
+            float mean_key = (record_key_num[k.first] == 0) ?0:(record_key_num[k.first] / n);
+            float mean_page = (record_page_num[k.first] == 0) ?0:(record_page_num[k.first] / n);
             ofs << "2^" << size << " ";
             ofs << mean_key << " " << mean_page << " " << n << endl;
         }

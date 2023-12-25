@@ -1,6 +1,6 @@
 # sample Makefile, feel free to make any modification.
 RES = main.cpp tree.cpp
-EXE = RPK64
+EXE = main
 all:
 	g++ -std=c++11 $(RES) -o $(EXE)
 # clean:
