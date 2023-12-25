@@ -35,7 +35,8 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    ofs.open(vec[vec.size() - 1]);
+    if(vec[1] == "-r") ofs.open(vec[vec.size() - 2]);
+    else ofs.open(vec[vec.size() - 1]);
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
     Mode md;
@@ -309,16 +310,16 @@ int main(int argc, char * argv[])
         }
     }   // end of SNIA Mode
 
-    // Request Mode ./main -r -r/-k <exp> <KPP> <RPK> <cmd> <outFile>
+    // Request Mode ./main -r -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <inputfile>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
-        if(argc < 8) {
+        if(argc < 9) {
             cout << "wrong input\n";
             return 0;
         }
         // input file
         ifstream ifs;
-        ifs.open("s17_01_all.txt");
+        ifs.open(vec[7]);
         // map for recording
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
@@ -341,7 +342,7 @@ int main(int argc, char * argv[])
                     float w_size;
                     ifs >> s;
                     if(s != "") {
-                        w_size = stoi(s) / pow(2, 14);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^14Byte)
+                        w_size = stoi(s) / pow(2, 12);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^12Byte)
                         if(w_size >= 1) {
                             w_size = ceil(w_size);
                             sum += w_size;
