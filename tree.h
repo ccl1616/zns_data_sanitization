@@ -117,6 +117,7 @@ public:
     void create_size_table();   // create size table by definition of tree; key manager need this info
 // sanitize
     pair<int, int> cmd_gen(Mode md, int size);    // based on md, return a chunk of key id that need to be updated into invalid
+    pair<int, int> cmd_gen_RequestSizeIs4KB(Mode md, int size);     // special cmd_gen function for RequestSizeIs4KB experiment
     pair<int, int> sanitize(pair<int, int> data, Mode md);
     void upward_update(int lv);
 // misc

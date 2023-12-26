@@ -583,6 +583,24 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int target_size)
 
     return make_pair(0,0);
 }
+pair<int, int> Tree_Req::cmd_gen_RequestSizeIs4KB(Mode md, int target_size)
+{
+    if(md == Mode::by_rand) {
+        int a, b = -1;
+        while(b == -1) {
+            a = rand_gen(0, Request_table.size() - 1);   // gen a valid data start id
+            b = a + (target_size - 1);
+            if(b <= Request_table.size() - 1) {
+                // found the right chunk
+                return make_pair(a, b);
+            }
+            else b = -1;
+        }
+    }
+    else cout << "wrong mode" << endl;
+
+    return make_pair(0,0);
+}
 pair<int, int> Tree_Req::sanitize(pair<int, int> data, Mode md)
 {
     // data is Request id, which is the key id
@@ -688,10 +706,10 @@ void Tree::traverse()
             continue;
         cout << "level: " << i.first << endl;
         // skip last level
-        // if(i.first == L - 1) {
-        //     cout << "skip\n";
-        //     break;
-        // }
+        if(i.first == L - 1) {
+            cout << "skip\n";
+            break;
+        }
         // print each key
         for(auto j: i.second) 
             cout << j << endl;

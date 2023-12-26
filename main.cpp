@@ -408,9 +408,10 @@ int main(int argc, char * argv[])
     
     //                            0   1      2     3     4     5    6                   7         (argc = 9)
     // Request Fixed Size ./main -rf -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
+    // write request size unit: Byte; usually input 4096, 4096 Byte = 4KB = 1 Page
     else if(vec[0] == "-rf") { 
         int fixed_req_size = stoi(vec[6]);  // get Write Request size
-        cout << "request mode, fixed size request with size: " << fixed_req_size << endl;
+        cout << "request mode, fixed size request with size: " << fixed_req_size << " Byte" << endl;
         if(argc < 9) {
             cout << "wrong input\n";
             return 0;
@@ -423,8 +424,9 @@ int main(int argc, char * argv[])
         map<int, float> record_key_num;   // (size, sum #updated keys)
         map<int, float> record_page_num;   // (size, sum #R/W pages)        
         // array for assigned sanitization sizes
-        vector<int> sani_size;  // a vector with sanitize command size; start from 2^12 because this is the minimum unit(4KB = 1LB)
-        for(int i = 12; i <= 20; i ++)
+        vector<int> sani_size;  // a vector with sanitize command size;
+        int LB_num = fixed_req_size / pow(2,12);
+        for(int i = log(LB_num) / log(2) ; i <= 20; i ++)
             sani_size.push_back(pow(2, i));
         // start
         for(int i = 0; i < cmd_per_group; i ++) {
@@ -434,7 +436,7 @@ int main(int argc, char * argv[])
                 // write to full
                 Tree_Req zns(Maxlba, KPP, L, RPK);
                 while(zns.write_pointer <= Maxlba) {
-                    int R_id = zns.add_request(fixed_req_size);
+                    int R_id = zns.add_request(fixed_req_size / pow(2,12));
                     if(R_id == -1) {
                         cout << "R_id == -1" << endl;
                         break;
