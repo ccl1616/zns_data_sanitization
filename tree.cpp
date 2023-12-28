@@ -330,6 +330,8 @@ pair<int, int> Tree::downward_update(bool all_to_valid)
                 page_collector.insert(key.page_id);
                 total_updated_keys ++;
                 update_key_status(make_pair(key.begin, key.end), key.level, Status::valid);
+                // debug
+                cout << "update key (" << key.begin << "," << key.end << ")-" << key.level << endl;
                 // debug check if it is device key
                 if(key.begin == 0 && key.end == Maxlba)
                     cout << "downward_update find device key" << endl;
@@ -579,6 +581,63 @@ pair<int, int> Tree_Req::cmd_gen(Mode md, int target_size)
             else b = -1;
         }
     }
+    else if(md == Mode::by_size) {
+        // customize sanitize size cmd_gen
+        if(target_size == 1) {
+            // generate cmd size = 1 LB
+            int a = -1, size;
+            while(a == -1) {
+                a = rand_gen(0, Request_table.size() - 1);   // gen a valid data id
+                size = Request_table[a].second;     // request size
+                if(size == 1) return make_pair(a, a);
+                else a = -1;
+            }
+        }
+        else if(target_size == 2) {
+            int rand_target_size = rand_gen(2, 31);
+            cout << "rand_target_size: " << rand_target_size << endl;
+            // generate accumulated cmd size = 2 LB ~ 31 LB
+            int a, b = -1, size;
+            while(b == -1) {
+                a = rand_gen(0, Request_table.size() - 1);   // gen a valid data id
+                size = Request_table[a].second;     // accumulate request size
+                b = a + 1;
+                while(size < rand_target_size && b <= Request_table.size() - 1) {
+                    size += Request_table[b].second;
+                    b ++;   // add one more to the next one, caused line 577 "b - 1"
+                }
+                if(size == rand_target_size) {
+                    // found the right chunk
+                    return make_pair(a, b - 1);
+                }
+                else b = -1;
+            }
+        }
+        else if(target_size == 32) {
+            int rand_target_size = rand_gen(32, pow(2, 20));
+            cout << "rand_target_size: " << rand_target_size << endl;
+            // generate accumulated cmd size >= 32 LB
+            int a, b = -1, size;
+            while(b == -1) {
+                a = rand_gen(0, Request_table.size() - 1);   // gen a valid data id
+                size = Request_table[a].second;     // accumulate request size
+                b = a + 1;
+                while(size < rand_target_size && b <= Request_table.size() - 1) {
+                    size += Request_table[b].second;
+                    b ++;   // add one more to the next one, caused line 577 "b - 1"
+                }
+                if(size == rand_target_size) {
+                    // found the right chunk
+                    return make_pair(a, b - 1);
+                }
+                else b = -1;
+            }
+        }
+        else{
+            cout << "cmd_gen wrong target_size" << endl;
+            return make_pair(0,0);
+        }
+    }
     else cout << "wrong mode" << endl;
 
     return make_pair(0,0);
@@ -629,7 +688,7 @@ void Tree_Req::upward_update(int lv)
     }
 // algorithm. bottom-up
     else {
-        int chunk_size = (lv == MLI) ?RPK : KPP;
+        int chunk_size = (lv == MLI) ?RPK :KPP;
         int quo = tree[MLI].size() / chunk_size;
         int rem = tree[MLI].size() % chunk_size;
         bool modification = false;

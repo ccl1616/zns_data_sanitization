@@ -44,12 +44,13 @@ int main(int argc, char * argv[])
     if(vec[1] == "-k") md = Mode::by_key;
     else if(vec[1] == "-r") md = Mode::by_rand;
     else if(vec[1] == "-t") md = Mode::by_stack;
+    else if(vec[1] == "-s") md = Mode::by_size;
     else {
         cout << "input mode wrong\n";
         return 0;
     }
     // exp variable
-    if(vec[0] == "-r" || vec[0] == "-rf" || vec[0] == "-rfsa") {
+    if(vec[0] == "-r" || vec[0] == "-rf" || vec[0] == "-rsa") {
         // request exp
         // -r -r <exp> <KPP> <RPK> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
@@ -448,6 +449,18 @@ int main(int argc, char * argv[])
                 set<int> page_collector;
                 zns.key_manager(zns.MLI, page_collector);
                 cout << "\nzone " << i << " write to full capacity" << endl;
+                cout << "Request table size: " << zns.Request_table.size() << endl;
+                // print tree info
+                cout << "print tree info: " << endl;
+                for(auto t: zns.tree) {
+                    cout << "  " << t.first << " " << t.second.size() << endl;
+                    if(t.first == 0) {
+                        // print keys at lv0
+                        for(auto k: t.second) {
+                            cout << k.begin << "," << k.end << k.st << endl;
+                        }
+                    }
+                }
 
                 // sani
                 // one round of sanitization
@@ -461,7 +474,7 @@ int main(int argc, char * argv[])
                 record_page_num[s] += keynum_pagenum.second;
 
                 // debug
-                cout << record_key_num[s] << " " << record_page_num[s] << endl;
+                cout << keynum_pagenum.first << " " << keynum_pagenum.second << endl;
 
                 if(keynum_pagenum.second == 0) {
                     cout << "0 page error\n";
@@ -494,14 +507,14 @@ int main(int argc, char * argv[])
     //                                                0     1      2     3     4     5    6        7
     // Request and Sanitization Assigned Size ./main -rsa -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <sani_mode_id>
     else if(vec[0] == "-rsa") {
-        cout << "request mode" << endl;
+        cout << "rsa mode" << endl;
         if(argc < 9) {
             cout << "wrong input\n";
             return 0;
         }
         // input file
         ifstream ifs;
-        ifs.open(vec[7]);
+        ifs.open("s17_01_all.txt");
         // map for recording
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
@@ -513,26 +526,42 @@ int main(int argc, char * argv[])
         switch(sani_mode_id) {
             case 0:
                 // 4KB; 1LB
+                for(int i = 0; i < 10; i ++)
+                    sani_size.push_back(1);
                 break;
             case 1:
                 // mid; 8-128KB ; 2-32 LB
+                for(int i = 0; i < 10; i ++)
+                    sani_size.push_back(2);
                 break;
             case 2:
                 // large; >=128KB; >=32LB
+                for(int i = 0; i < 10; i ++)
+                    sani_size.push_back(32);
                 break;
             case 3:
                 // mostly small; 80% 4KB + 10% mid + 10% large
+                for(int i = 0; i < 8; i ++)
+                    sani_size.push_back(1);
+                sani_size.push_back(2);
+                sani_size.push_back(32);
                 break;
             case 4:
                 // mostly large; 80% large + 10% mid + 10% 4KB
+                for(int i = 0; i < 10; i ++)
+                    sani_size.push_back(32);
+                sani_size.push_back(2);
+                sani_size.push_back(1);
                 break;
             default:
-                // sth
+                // 4KB; 1LB
+                for(int i = 0; i < 10; i ++)
+                    sani_size.push_back(1);
                 break;
         }
 
-
         // start
+        // cmd_per_group = 100, sani_size vec size = 10 -> total 1000 zones
         for(int i = 0; i < cmd_per_group; i ++) {
             for(auto s: sani_size) {
                 // create one zone write to full, then perform sani smc with size s
@@ -571,8 +600,21 @@ int main(int argc, char * argv[])
                 set<int> page_collector;
                 zns.key_manager(zns.MLI, page_collector);
                 cout << "\nzone " << i << " write to full capacity" << endl;
+                // print tree info
+                cout << "print tree info: " << endl;
+                for(auto t: zns.tree) {
+                    cout << "  " << t.first << " " << t.second.size() << endl;
+                    if(t.first == 0) {
+                        // print keys at lv0
+                        for(auto k: t.second) {
+                            cout << k.begin << "," << k.end << " " << k.st << endl;
+                        }
+                    }
+                }
 
                 // sani
+                // before sani, check if there's request size == 1LB
+
                 // one round of sanitization
                 pair<int, int> data;
                 data = zns.cmd_gen(md, s);    // request id
@@ -584,7 +626,7 @@ int main(int argc, char * argv[])
                 record_page_num[s] += keynum_pagenum.second;
 
                 // debug
-                cout << record_key_num[s] << " " << record_page_num[s] << endl;
+                cout << keynum_pagenum.first << " " << keynum_pagenum.second << endl;
 
                 if(keynum_pagenum.second == 0) {
                     cout << "0 page error\n";
