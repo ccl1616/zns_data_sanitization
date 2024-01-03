@@ -35,7 +35,8 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    if(vec[0] == "-r" || vec[0] == "-rsa") ofs.open(vec[vec.size() - 2]);   // request can give one input trace file as argument
+    if(vec[0] == "-r") ofs.open(vec[vec.size() - 2]);
+    else if(vec[0] == "-rsa") ofs.open(vec[vec.size() - 3]);
     else ofs.open(vec[vec.size() - 1]);
     // insert spec
     int exp, KPP, cmd_per_group, Maxlba, RPK;    // exponent of LBA num, LBA num = 2^exp
@@ -310,7 +311,7 @@ int main(int argc, char * argv[])
             // ofs << "\n\n";
         }
     }   // end of SNIA Mode
-
+    //                      0   1      2     3     4     5    6         7         (vec size = 8)
     // Request Mode ./main -r -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <inputfile>
     else if(vec[0] == "-r") {
         cout << "request mode" << endl;
@@ -407,7 +408,7 @@ int main(int argc, char * argv[])
         }
     }
     
-    //                            0   1      2     3     4     5    6                   7         (argc = 9)
+    //                            0   1      2     3     4     5    6                   7         (vec size = 8)
     // Request Fixed Size ./main -rf -r/-k <exp> <KPP> <RPK> <cmd> <Write Request size> <outFile>
     // write request size unit: Byte; usually input 4096, 4096 Byte = 4KB = 1 Page
     else if(vec[0] == "-rf") { 
@@ -504,24 +505,24 @@ int main(int argc, char * argv[])
         
     }
     
-    //                                                0     1      2     3     4     5    6        7
-    // Request and Sanitization Assigned Size ./main -rsa -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <sani_mode_id>
+    //                                                0     1      2     3     4     5    6        7           8
+    // Request and Sanitization Assigned Size ./main -rsa -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <inputfile> <sani_mode_id>
     else if(vec[0] == "-rsa") {
         cout << "rsa mode" << endl;
-        if(argc < 9) {
-            cout << "wrong input\n";
+        if(argc < 10) {
+            cout << "wrong input flags\n";
             return 0;
         }
         // input file
         ifstream ifs;
-        ifs.open("s17_01_all.txt");
+        ifs.open(vec[7]);
         // map for recording
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
         map<int, float> record_page_num;   // (size, sum #R/W pages)
 
         // array for assigned sanitization sizes based on sani_mode_id
-        int sani_mode_id = stoi(vec[7]);
+        int sani_mode_id = stoi(vec[8]);
         vector<int> sani_size;
         switch(sani_mode_id) {
             case 0:
@@ -530,12 +531,12 @@ int main(int argc, char * argv[])
                     sani_size.push_back(1);
                 break;
             case 1:
-                // mid; 8-128KB ; 2-32 LB
+                // mid; 2-31 LB
                 for(int i = 0; i < 10; i ++)
                     sani_size.push_back(2);
                 break;
             case 2:
-                // large; >=128KB; >=32LB
+                // large; >=32LB
                 for(int i = 0; i < 10; i ++)
                     sani_size.push_back(32);
                 break;
