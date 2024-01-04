@@ -567,8 +567,11 @@ int main(int argc, char * argv[])
             for(auto s: sani_size) {
                 // create one zone write to full, then perform sani smc with size s
 
+                // for RPK=1, manually set to RPK=KPP to make it work
+                if(RPK == 1) RPK = KPP;
                 // write to full
                 Tree_Req zns(Maxlba, KPP, L, RPK);
+
                 float sum = 0;
                 while(zns.write_pointer <= Maxlba && !ifs.eof()) {
                     // get SNIA size
@@ -612,7 +615,7 @@ int main(int argc, char * argv[])
                         }
                     }
                 }
-
+                cout << "Request num: " << zns.Request_table.size() << endl;
                 // sani
                 // before sani, check if there's request size == 1LB
 

@@ -561,6 +561,10 @@ void Tree_Req::create_size_table()
     for(int i = MLI - 2; i >= 0; i --) {
         size_table[i] = size_table[i + 1] * KPP;
     }
+    cout << "print size_table" << endl;
+    for(auto i: size_table)
+        cout << i.first << ": " << i.second << endl;
+    cout << endl;
 }
 pair<int, int> Tree_Req::cmd_gen(Mode md, int target_size)
 {
@@ -689,6 +693,7 @@ void Tree_Req::upward_update(int lv)
 // algorithm. bottom-up
     else {
         int chunk_size = (lv == MLI) ?RPK :KPP;
+        // int chunk_size = KPP;
         int quo = tree[MLI].size() / chunk_size;
         int rem = tree[MLI].size() % chunk_size;
         bool modification = false;
@@ -720,16 +725,22 @@ void Tree_Req::upward_update(int lv)
                 // mark parent as invalid
                 Key par = return_parent_key_info(Key(key_begin - size_table[lv], key_begin - 1, lv));
                 // pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                if(update_key_status(make_pair(par.begin, par.end), par.level, Status::invalid) == true)
+                if(update_key_status(make_pair(par.begin, par.end), par.level, Status::invalid) == true) {
                     modification = true;
+                    // debug
+                    cout << "invalid key (" << par.begin << "," << par.end << ")-" << par.level << endl;
+                }
                 else update_key_status(make_pair(0, Maxlba), 0, Status::updated);
             }
-            else if(record[Status::valid] != chunk_size) {
-                // mark parentas updated 
+            // else if(record[Status::valid] != chunk_size) {
+            else if(record[Status::updated] != 0 || record[Status::invalid] != 0) {
+                // mark parent as updated
+                // cout << "mark parent as updated" << endl; 
                 Key par = return_parent_key_info(Key(key_begin - size_table[lv], key_begin - 1, lv));
                 // pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
-                if( update_key_status(make_pair(par.begin, par.end), par.level, Status::updated) == true)
+                if( update_key_status(make_pair(par.begin, par.end), par.level, Status::updated) == true) {
                     modification = true;
+                }
                 else update_key_status(make_pair(0, Maxlba), 0, Status::updated);
             }
         }
