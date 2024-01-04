@@ -505,8 +505,8 @@ int main(int argc, char * argv[])
         
     }
     
-    //                                                0     1      2     3     4     5    6        7           8
-    // Request and Sanitization Assigned Size ./main -rsa -r/-k <exp> <KPP> <RPK> <cmd> <outFile> <inputfile> <sani_mode_id>
+    //                                                0    1   2     3     4     5    6        7           8
+    // Request and Sanitization Assigned Size ./main -rsa -s  <exp> <KPP> <RPK> <cmd> <outFile> <inputfile> <sani_mode_id>
     else if(vec[0] == "-rsa") {
         cout << "rsa mode" << endl;
         if(argc < 10) {
@@ -520,6 +520,7 @@ int main(int argc, char * argv[])
         map<int, int> num;  // (size, #times this size shows). need this value to calculate mean
         map<int, float> record_key_num;   // (size, sum #updated keys)
         map<int, float> record_page_num;   // (size, sum #R/W pages)
+        map<int, float> record_req_num;    // (size, sum $sani request)
 
         // array for assigned sanitization sizes based on sani_mode_id
         int sani_mode_id = stoi(vec[8]);
@@ -549,7 +550,7 @@ int main(int argc, char * argv[])
                 break;
             case 4:
                 // mostly large; 80% large + 10% mid + 10% 4KB
-                for(int i = 0; i < 10; i ++)
+                for(int i = 0; i < 8; i ++)
                     sani_size.push_back(32);
                 sani_size.push_back(2);
                 sani_size.push_back(1);
@@ -628,9 +629,10 @@ int main(int argc, char * argv[])
                 pair<int, int> keynum_pagenum = zns.sanitize(data, md);
                 record_key_num[s] += keynum_pagenum.first;
                 record_page_num[s] += keynum_pagenum.second;
+                record_req_num[s] += (data.second - data.first + 1);
 
                 // debug
-                cout << keynum_pagenum.first << " " << keynum_pagenum.second << endl;
+                cout << keynum_pagenum.first << " " << keynum_pagenum.second << " " << (data.second - data.first + 1) << endl;
 
                 if(keynum_pagenum.second == 0) {
                     cout << "0 page error\n";
@@ -645,14 +647,15 @@ int main(int argc, char * argv[])
         }
         cout << "zns done\n";
 
-        ofs << "size #key #page #zones\n";
+        ofs << "size #key #page #req #zones\n";
         for(auto k: num) {
             int size = log(k.first) / log(2);
             int n = k.second;
             float mean_key = (record_key_num[k.first] == 0) ?0:(record_key_num[k.first] / n);
             float mean_page = (record_page_num[k.first] == 0) ?0:(record_page_num[k.first] / n);
+            float mean_req = (record_req_num[k.first] == 0) ?0:(record_req_num[k.first] / n);
             ofs << "2^" << size << " ";
-            ofs << mean_key << " " << mean_page << " " << n << endl;
+            ofs << mean_key << " " << mean_page << " " << mean_req << " " << n << endl;
         }
     }
     

@@ -727,8 +727,6 @@ void Tree_Req::upward_update(int lv)
                 // pair<int, int> key = make_pair(i * size_table[lv - 1], (i+1) * size_table[lv - 1] - 1);
                 if(update_key_status(make_pair(par.begin, par.end), par.level, Status::invalid) == true) {
                     modification = true;
-                    // debug
-                    cout << "invalid key (" << par.begin << "," << par.end << ")-" << par.level << endl;
                 }
                 else update_key_status(make_pair(0, Maxlba), 0, Status::updated);
             }
