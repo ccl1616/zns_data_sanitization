@@ -35,7 +35,7 @@ int main(int argc, char * argv[])
 
     // redirect output
     ofstream ofs;
-    if(vec[0] == "-r") ofs.open(vec[vec.size() - 2]);
+    if(vec[0] == "-r" || vec[0] == "-wo") ofs.open(vec[vec.size() - 2]);
     else if(vec[0] == "-rsa") ofs.open(vec[vec.size() - 3]);
     else ofs.open(vec[vec.size() - 1]);
     // insert spec
@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
         return 0;
     }
     // exp variable
-    if(vec[0] == "-r" || vec[0] == "-rf" || vec[0] == "-rsa") {
+    if(vec[0] == "-r" || vec[0] == "-rf" || vec[0] == "-rsa" || vec[0] == "-wo") {
         // request exp
         // -r -r <exp> <KPP> <RPK> <cmd>
         exp = stoi(vec[2]), KPP = stoi(vec[3]), RPK = stoi(vec[4]), cmd_per_group = stoi(vec[5]);
@@ -505,7 +505,7 @@ int main(int argc, char * argv[])
         
     }
     
-    //                                                0    1   2     3     4     5    6        7           8
+    //                                                0    1   2     3     4     5     6        7           8
     // Request and Sanitization Assigned Size ./main -rsa -s  <exp> <KPP> <RPK> <cmd> <outFile> <inputfile> <sani_mode_id>
     else if(vec[0] == "-rsa") {
         cout << "rsa mode" << endl;
@@ -659,6 +659,75 @@ int main(int argc, char * argv[])
         }
     }
     
+    //                    0   1   2     3     4     5      6         7           
+    // write only ./main -wo -r <exp> <KPP> <RPK> <cmd> <outFile> <inputfile>
+    // write only and record the runtime
+    else if(vec[0] == "-wo") {
+        cout << "rsa mode" << endl;
+        if(argc < 9) {
+            cout << "wrong input flags\n";
+            return 0;
+        }
+        // input file
+        ifstream ifs;
+        ifs.open(vec[7]);
+        
+        for(int i = 0; i < cmd_per_group; i ++) {
+            // create one zone write to full, then perform sani smc with size s
+
+            // for RPK=1, manually set to RPK=KPP to make it work
+            if(RPK == 1) RPK = KPP;
+            // write to full
+            Tree_Req zns(Maxlba, KPP, L, RPK);
+
+            float sum = 0;
+            while(zns.write_pointer <= Maxlba && !ifs.eof()) {
+                // get SNIA size
+                string s;
+                float w_size;
+                ifs >> s;
+                if(s != "") {
+                    w_size = stoi(s) / pow(2, 12);    // transfer unit from Byte to LBA (1LBA = 4KB = 2^12Byte)
+                    if(w_size >= 1) {
+                        w_size = ceil(w_size);
+                        sum += w_size;
+                        // cout << w_size << " " << sum << endl;   // debug, print write process
+                        // write
+                        int R_id = zns.add_request(w_size);
+                        if(R_id == -1) break;
+                        zns.write_data(R_id);
+                    }
+                    
+                }
+                // check ifs
+                if(ifs.eof()) {
+                    ifs.clear();
+                    ifs.seekg(0);   // use this to get back to beginning of file
+                    cout << "hit file end\n";
+                }
+
+            }
+            // create non-data keys
+            // call key manager to create parent key if needed
+            set<int> page_collector;
+            zns.key_manager(zns.MLI, page_collector);
+            cout << "\nzone " << i << " write to full capacity" << endl;
+            // print tree info
+            cout << "print tree info: " << endl;
+            for(auto t: zns.tree) {
+                cout << "  " << t.first << " " << t.second.size() << endl;
+                if(t.first == 0) {
+                    // print keys at lv0
+                    for(auto k: t.second) {
+                        cout << k.begin << "," << k.end << " " << k.st << endl;
+                    }
+                }
+            }
+            cout << "Request num: " << zns.Request_table.size() << endl;
+            cout << "zone " << i << endl;
+        }
+        cout << "zns done\n";
+    }
     // SNIA write ./main -sw -r <exp> <KPP> <cmd> <outFile>
     // draw write key pages-data key pages bar chart
     else if(vec[0] == "-sw") {
